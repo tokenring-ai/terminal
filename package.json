@@ -1,0 +1,28 @@
+{
+  "name": "@tokenring-ai/terminal",
+  "version": "0.2.0",
+  "description": "Terminal and shell command execution service for Token Ring",
+  "dependencies": {
+    "@tokenring-ai/agent": "0.2.0",
+    "@tokenring-ai/app": "0.2.0",
+    "@tokenring-ai/chat": "0.2.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.17",
+    "vitest": "catalog:",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./*": "./*.ts"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "tsc --noEmit"
+  },
+  "type": "module"
+}
