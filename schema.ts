@@ -6,6 +6,11 @@ export const TerminalAgentConfigSchema = z.object({
     cropOutput: z.number().optional(),
     timeoutSeconds: z.number().optional(),
   }).optional(),
+  persistent: z.object({
+    minInterval: z.number().optional(),
+    settleInterval: z.number().optional(),
+    maxInterval: z.number().optional(),
+  }).optional(),
 }).strict().default({});
 
 export const TerminalConfigSchema = z.object({
@@ -14,6 +19,11 @@ export const TerminalConfigSchema = z.object({
     bash: z.object({
       cropOutput: z.number().default(10000),
       timeoutSeconds: z.number().default(60),
+    }).prefault({}),
+    interactive: z.object({
+      minInterval: z.number().default(1),
+      settleInterval: z.number().default(2),
+      maxInterval: z.number().default(30),
     }).prefault({}),
   }),
   providers: z.record(z.string(), z.any()),
@@ -39,7 +49,3 @@ export const TerminalConfigSchema = z.object({
     "git.*reset", // i.e. git reset
   ])
 }).strict();
-
-export type TerminalAgentConfig = {
-  terminal: z.input<typeof TerminalAgentConfigSchema>
-};

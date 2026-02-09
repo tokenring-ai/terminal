@@ -19,8 +19,13 @@ The `@tokenring-ai/terminal` package provides a unified interface for executing 
 - Compound command parsing (&&, ||, ;, |)
 - Configurable output truncation
 - Multi-provider architecture for different terminal backends
+- **Isolation level support** for sandboxed execution (none, sandbox, container)
 - State management for agent-specific terminal configuration
 - Tool-based interface with safety confirmation prompts
+- **Persistent terminal sessions** for long-running processes and interactive shells
+- **Session management** with start, continue, stop, and list operations
+- **Configurable wait intervals** for output collection (minInterval, settleInterval, maxInterval)
+- **Position-based output tracking** for incremental reads
 
 ## Dependencies
 
@@ -136,8 +141,43 @@ interface TerminalProvider {
     script: string,
     options: ExecuteCommandOptions,
   ): Promise<ExecuteCommandResult>;
+
+  startInteractiveSession(
+    options: ExecuteCommandOptions
+  ): Promise<string>;
+
+  sendInput(
+    sessionId: string,
+    input: string
+  ): Promise<void>;
+
+  collectOutput(
+    sessionId: string,
+    fromPosition: number,
+    waitOptions: OutputWaitOptions
+  ): Promise<InteractiveTerminalOutput>;
+
+  terminateSession(
+    sessionId: string
+  ): Promise<void>;
+
+  getSessionStatus(
+    sessionId: string
+  ): SessionStatus | null;
+
+  getIsolationLevel(): TerminalIsolationLevel;
 }
 ```
+
+**TerminalIsolationLevel:**
+
+```typescript
+type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
+```
+
+- `'none'` - No isolation, commands run directly on the host
+- `'sandbox'` - Commands run in a sandbox (e.g., bubblewrap)
+- `'container'` - Commands run in a container (e.g., Docker)
 
 **ExecuteCommandOptions:**
 
@@ -205,6 +245,97 @@ Tool for executing shell commands through the agent interface.
 
 - Unknown commands: Requires user confirmation with 10-second timeout
 - Dangerous commands: Requires user confirmation without timeout
+
+#### terminal_start
+
+Tool for starting persistent terminal sessions.
+
+**Parameters:**
+
+- `command`: The shell command to execute (string)
+- `stdin`: Initial input to send to stdin (optional string)
+
+**Behavior:**
+
+1. Validates command and checks safety level
+2. Starts a persistent terminal session
+3. Waits for initial output using configured intervals
+4. Returns session ID, output, and position marker
+
+**Returns:**
+
+```
+Terminal Session Started
+ID: term-1
+Command: npm run dev
+Position: 1024
+
+Output:
+[initial output]
+```
+
+#### terminal_continue
+
+Tool for continuing interaction with persistent terminal sessions.
+
+**Parameters:**
+
+- `sessionId`: The terminal session ID (string)
+- `stdin`: Input to send to the terminal (optional string)
+
+**Behavior:**
+
+1. Retrieves session from state
+2. Sends stdin if provided
+3. Waits for new output using configured intervals
+4. Returns new output since last position
+5. Updates position in state
+
+**Returns:**
+
+```
+Terminal Session: term-1
+Position: 2048
+Complete: false
+
+Output:
+[new output]
+```
+
+#### terminal_stop
+
+Tool for terminating persistent terminal sessions.
+
+**Parameters:**
+
+- `sessionId`: The terminal session ID to terminate (string)
+
+**Behavior:**
+
+1. Terminates the process
+2. Removes session from state
+
+**Returns:**
+
+```
+Terminal session term-1 terminated.
+```
+
+#### terminal_list
+
+Tool for listing all active persistent terminal sessions.
+
+**Parameters:** None
+
+**Returns:**
+
+```
+Active Terminal Sessions:
+ID           | Command                        | Position | Running | Uptime
+-------------|--------------------------------|----------|---------|--------
+term-1       | npm run dev                    | 1024     | Yes     | 45s
+term-2       | python server.py               | 2048     | Yes     | 120s
+```
 
 ## Configuration
 
@@ -274,10 +405,62 @@ const agentConfig = {
     bash: {
       cropOutput: 5000, // Optional, defaults to agentDefaults.bash.cropOutput
       timeoutSeconds: 30 // Optional, defaults to agentDefaults.bash.timeoutSeconds
+    },
+    persistent: {
+      minInterval: 1, // Optional, minimum wait before checking output (seconds)
+      settleInterval: 2, // Optional, inactivity time before responding (seconds)
+      maxInterval: 30 // Optional, maximum wait time (seconds)
     }
   }
 };
 ```
+
+## Persistent Terminal Sessions
+
+### Overview
+
+Persistent terminal sessions allow agents to start long-running processes and interact with them over time. This is useful for:
+
+- Running development servers (npm run dev, python manage.py runserver)
+- Interactive shells (bash, python REPL)
+- Processes that require user input
+- Monitoring long-running tasks
+
+### Output Collection Strategy
+
+When starting or continuing a session, the system waits for output using three configurable intervals:
+
+1. **minInterval**: Minimum time to wait before checking output (prevents premature responses)
+2. **settleInterval**: Time of output inactivity required before responding (detects command completion)
+3. **maxInterval**: Maximum time to wait before forcing a response (prevents infinite waits)
+
+### Session Lifecycle
+
+1. **Start**: Agent starts a terminal with `terminal_start` tool
+   - Command is validated for safety
+   - Session is created with unique ID
+   - Initial output is collected and returned
+   - Position marker is saved in state
+
+2. **Continue**: Agent interacts with `terminal_continue` tool
+   - Optional stdin can be sent to the process
+   - New output since last position is collected
+   - Position is updated in state
+   - Returns whether process has completed
+
+3. **Stop**: Agent terminates with `terminal_stop` tool
+   - Process is killed
+   - Session is removed from state
+
+4. **List**: Agent views active sessions with `terminal_list` tool
+   - Shows all running sessions
+   - Displays command, position, and uptime
+
+### Session Cleanup
+
+- Sessions are automatically terminated on agent reset (chat or full)
+- Completed processes are removed from state
+- Orphaned processes are cleaned up on service shutdown
 
 ## Usage Examples
 
@@ -349,6 +532,75 @@ const result = await agent.execute({
 });
 
 console.log(result.output);
+```
+
+### Using Persistent Terminal Sessions
+
+```typescript
+// Start a development server
+const startResult = await agent.execute({
+  tool: 'terminal_start',
+  arguments: {
+    command: 'npm run dev'
+  }
+});
+// Returns: { id: 'term-1', output: 'Server starting...', position: 100 }
+
+// Send input to the session
+const continueResult = await agent.execute({
+  tool: 'terminal_continue',
+  arguments: {
+    sessionId: 'term-1',
+    stdin: 'y\n'
+  }
+});
+// Returns: { output: 'Server started on port 3000', position: 250, complete: false }
+
+// List active sessions
+const listResult = await agent.execute({
+  tool: 'terminal_list',
+  arguments: {}
+});
+
+// Stop the session
+await agent.execute({
+  tool: 'terminal_stop',
+  arguments: { sessionId: 'term-1' }
+});
+```
+
+### Interactive Shell Example
+
+```typescript
+// Start a Python REPL
+const { id } = await agent.execute({
+  tool: 'terminal_start',
+  arguments: { command: 'python3' }
+});
+
+// Execute Python code
+await agent.execute({
+  tool: 'terminal_continue',
+  arguments: {
+    sessionId: id,
+    stdin: 'print("Hello from Python")\n'
+  }
+});
+
+// Execute more code
+await agent.execute({
+  tool: 'terminal_continue',
+  arguments: {
+    sessionId: id,
+    stdin: 'x = 42\nprint(x * 2)\n'
+  }
+});
+
+// Exit the REPL
+await agent.execute({
+  tool: 'terminal_stop',
+  arguments: { sessionId: id }
+});
 ```
 
 ## Plugin Integration

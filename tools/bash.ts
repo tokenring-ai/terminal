@@ -1,7 +1,6 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
 import {z} from "zod";
-import type {ExecuteCommandResult} from "../TerminalProvider.js";
 import TerminalService from "../TerminalService.ts";
 import {TerminalState} from "../state/terminalState.ts";
 
@@ -34,14 +33,14 @@ export async function execute(
 
   const commandSafetyLevel = terminal.getCommandSafetyLevel(cmdString);
   if (commandSafetyLevel === "unknown") {
-    const confirmed = await agent.askForConfirmation({
+    const confirmed = await agent.askForApproval({
       message: `Execute potentially unsafe command: ${cmdString}?`,
       default: true,
       timeout: 10,
     });
     if (!confirmed) throw new Error("User did not approve command execution");
   } else if (commandSafetyLevel === "dangerous") {
-    const confirmed = await agent.askForConfirmation({
+    const confirmed = await agent.askForApproval({
       message: `Execute potentially dangerous command: ${cmdString}?`,
     })
     if (!confirmed) throw new Error("User did not approve command execution");

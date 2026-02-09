@@ -1,6 +1,8 @@
+import {AgentCommandService} from "@tokenring-ai/agent";
 import {TokenRingPlugin} from "@tokenring-ai/app";
 import {ChatService} from "@tokenring-ai/chat";
 import {z} from "zod";
+import commands from "./commands.ts";
 import packageJSON from "./package.json" with {type: "json"};
 import TerminalService from "./TerminalService.js";
 import {TerminalConfigSchema} from "./schema.ts";
@@ -19,6 +21,9 @@ export default {
       app.addServices(new TerminalService(config.terminal));
       app.waitForService(ChatService, chatService => {
         chatService.addTools(tools);
+      });
+      app.waitForService(AgentCommandService, agentCommandService => {
+        agentCommandService.addAgentCommands(commands);
       });
     }
   },
