@@ -1,17 +1,21 @@
 export interface ExecuteCommandOptions {
-  input?: string;
   timeoutSeconds: number;
   env?: Record<string, string | undefined>;
   workingDirectory?: string;
 }
 
 export type ExecuteCommandResult = {
-  ok: boolean;
-  output: string;
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  error?: string;
+  status: "success",
+  output: string,
+} | {
+  status: "badExitCode",
+  output: string,
+  exitCode: number,
+} | {
+  status: "timeout",
+} | {
+  status: "unknownError",
+  error: string,
 };
 
 export interface OutputWaitOptions {

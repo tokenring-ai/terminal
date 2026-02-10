@@ -1,8 +1,8 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
 import {z} from "zod";
-import TerminalService from "../TerminalService.ts";
 import {TerminalState} from "../state/terminalState.ts";
+import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_bash";
 const displayName = "Terminal/bash";
@@ -51,14 +51,15 @@ export async function execute(
       timeoutSeconds: bashOptions.timeoutSeconds,
     }, agent);
 
-    let croppedOutput = result.output.length > bashOptions.cropOutput
-      ? result.output.trim().substring(0, bashOptions.cropOutput) + "\n [...Results were too long, truncated...]\n"
-      : result.output;
+    const output = result.status === "success" || result.status === "badExitCode" ? result.output : result.status === "unknownError" ? result.error : "Timeout";
+    let croppedOutput = output.length > bashOptions.cropOutput
+      ? output.trim().substring(0, bashOptions.cropOutput) + "\n [...Results were too long, truncated...]\n"
+      : output;
 
     return `
 [${command}]
-Success: ${result.ok ? "True" : "False"}
-Exit Code: ${result.exitCode}
+Success: ${result.status === "success" ? "True" : "False"}
+Exit Code: ${result.status === "badExitCode" ? result.exitCode : 0}
   
 Output: 
 ${croppedOutput}
