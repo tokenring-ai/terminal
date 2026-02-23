@@ -3,19 +3,17 @@ import type {TreeLeaf} from "@tokenring-ai/agent/question";
 import TerminalService from "../../../TerminalService.ts";
 import {TerminalState} from "../../../state/terminalState.ts";
 
-export async function select(_remainder: string, agent: Agent): Promise<void> {
+export async function select(_remainder: string, agent: Agent): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
   const availableProviders = terminal.getAvailableProviders();
 
   if (availableProviders.length === 0) {
-    agent.infoMessage("No terminal providers are registered.");
-    return;
+    return "No terminal providers are registered.";
   }
 
   if (availableProviders.length === 1) {
     terminal.setActiveTerminal(availableProviders[0], agent);
-    agent.infoMessage(`Only one provider configured, auto-selecting: ${availableProviders[0]}`);
-    return;
+    return `Only one provider configured, auto-selecting: ${availableProviders[0]}`;
   }
 
   const activeProvider = agent.getState(TerminalState).providerName;
@@ -40,8 +38,8 @@ export async function select(_remainder: string, agent: Agent): Promise<void> {
   if (selection) {
     const selectedValue = selection[0];
     terminal.setActiveTerminal(selectedValue, agent);
-    agent.infoMessage(`Active provider set to: ${selectedValue}`);
+    return `Active provider set to: ${selectedValue}`;
   } else {
-    agent.infoMessage("Provider selection cancelled.");
+    return "Provider selection cancelled.";
   }
 }

@@ -1,19 +1,19 @@
 import Agent from "@tokenring-ai/agent/Agent";
+import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
 import TerminalService from "../../../TerminalService.ts";
 
-export async function set(remainder: string, agent: Agent): Promise<void> {
+export async function set(remainder: string, agent: Agent): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
   const providerName = remainder.trim();
 
   if (!providerName) {
-    agent.errorMessage("Usage: /terminal provider set <name>");
-    return;
+    throw new CommandFailedError("Usage: /terminal provider set <name>");
   }
 
   try {
     terminal.setActiveTerminal(providerName, agent);
-    agent.infoMessage(`Active provider set to: ${providerName}`);
+    return `Active provider set to: ${providerName}`;
   } catch (error) {
-    agent.errorMessage(`Provider "${providerName}" not found.`);
+    throw new CommandFailedError(`Provider "${providerName}" not found.`);
   }
 }

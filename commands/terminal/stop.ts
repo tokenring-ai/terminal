@@ -1,15 +1,15 @@
 import Agent from "@tokenring-ai/agent/Agent";
+import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
 import TerminalService from "../../TerminalService.ts";
 
-export default async function stop(remainder: string, agent: Agent): Promise<void> {
+export default async function stop(remainder: string, agent: Agent): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
   const sessionId = remainder.trim();
 
   if (!sessionId) {
-    agent.errorMessage("Usage: /terminal stop <sessionId>");
-    return;
+    throw new CommandFailedError("Usage: /terminal stop <sessionId>");
   }
 
   await terminal.terminateSession(sessionId, agent);
-  agent.infoMessage(`Terminal session ${sessionId} terminated.`);
+  return `Terminal session ${sessionId} terminated.`;
 }
