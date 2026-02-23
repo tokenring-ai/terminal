@@ -1,4 +1,5 @@
 import Agent from "@tokenring-ai/agent/Agent";
+import type {AgentCreationContext} from "@tokenring-ai/agent/types";
 import {TokenRingService} from "@tokenring-ai/app/types";
 import deepMerge from "@tokenring-ai/utility/object/deepMerge";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
@@ -29,9 +30,15 @@ export default class TerminalService implements TokenRingService {
     this.defaultProvider = this.terminalProviderRegistry.requireItemByName(this.options.agentDefaults.provider);
   }
 
-  attach(agent: Agent): void {
+  attach(agent: Agent, creationContext: AgentCreationContext): void {
     const config = deepMerge(this.options.agentDefaults, agent.getAgentConfigSlice('terminal', TerminalAgentConfigSchema))
     agent.initializeState(TerminalState, config);
+
+    const terminalProviderName = config.provider ?? this.defaultProvider;
+    const terminalProvider = this.terminalProviderRegistry.getItemByName(terminalProviderName);
+    if (terminalProvider) {
+      creationContext.items.push(`Terminal provider: ${terminalProviderName} (isolation: ${terminalProvider.getIsolationLevel()})`);
+    }
   }
 
   requireActiveTerminal(agent: Agent): TerminalProvider {
@@ -41,10 +48,11 @@ export default class TerminalService implements TokenRingService {
   }
 
   setActiveTerminal(providerName: string, agent: Agent): void {
-    this.terminalProviderRegistry.requireItemByName(providerName);
+    const newProvider = this.terminalProviderRegistry.requireItemByName(providerName);
     agent.mutateState(TerminalState, (state: TerminalState) => {
       state.providerName = providerName;
     });
+    agent.infoMessage(`Terminal provider changed to ${providerName} (isolation: ${newProvider.getIsolationLevel()})`);
   }
 
   async executeCommand(

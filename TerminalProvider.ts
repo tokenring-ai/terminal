@@ -1,3 +1,6 @@
+import {Agent} from "@tokenring-ai/agent";
+import type {AgentCreationContext} from "@tokenring-ai/agent/types";
+
 export interface ExecuteCommandOptions {
   timeoutSeconds: number;
   env?: Record<string, string | undefined>;
