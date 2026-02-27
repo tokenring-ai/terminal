@@ -75,6 +75,7 @@ const execute = createSubcommandRouter({
 });
 
 export default {
+  name: "terminal",
   description,
   execute,
   help,
