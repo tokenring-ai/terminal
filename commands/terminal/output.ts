@@ -1,16 +1,22 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
+import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import codeBlock from "@tokenring-ai/utility/string/codeBlock";
 import TerminalService from "../../TerminalService.ts";
 
-export default async function output(remainder: string, agent: Agent): Promise<string> {
-  const terminal = agent.requireServiceByType(TerminalService);
-  const sessionId = remainder.trim();
+export default {
+  name: "terminal output",
+  description: "/terminal output - Get complete output from a session",
+  help: `# /terminal output <sessionId>
 
-  if (!sessionId) {
-    throw new CommandFailedError("Usage: /terminal output <sessionId>");
-  }
+Get the complete output from a terminal session without truncation.
 
-  const completeOutput = await terminal.getCompleteSessionOutput(sessionId, agent);
-  return codeBlock(completeOutput);
-}
+## Example
+
+/terminal output term-1`,
+  execute: async (remainder: string, agent: Agent): Promise<string> => {
+    const sessionId = remainder.trim();
+    if (!sessionId) throw new CommandFailedError("Usage: /terminal output <sessionId>");
+    return codeBlock(await agent.requireServiceByType(TerminalService).getCompleteSessionOutput(sessionId, agent));
+  },
+} satisfies TokenRingAgentCommand;

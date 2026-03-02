@@ -2,31 +2,31 @@
 
 Terminal and shell command execution service for Token Ring AI agents.
 
-## Installation
-
-```bash
-bun install @tokenring-ai/terminal
-```
-
 ## Overview
 
 The `@tokenring-ai/terminal` package provides a unified interface for executing shell commands with safety validation and provider-based architecture. It enables agents to execute shell commands safely with configurable timeouts, output truncation, and command safety validation.
 
-## Features
+### Key Features
 
-- Shell command execution with timeout support (default 120 seconds)
-- Command safety validation (safe, unknown, dangerous categories)
-- Compound command parsing (&&, ||, ;, |)
-- Configurable output truncation
-- Multi-provider architecture for different terminal backends
+- **Shell command execution** with timeout support (default 120 seconds)
+- **Command safety validation** (safe, unknown, dangerous categories)
+- **Compound command parsing** (&&, ||, ;, |)
+- **Configurable output truncation**
+- **Multi-provider architecture** for different terminal backends
 - **Isolation level support** for sandboxed execution (none, sandbox, container)
-- State management for agent-specific terminal configuration
-- Tool-based interface with safety confirmation prompts
+- **State management** for agent-specific terminal configuration
+- **Tool-based interface** with safety confirmation prompts
 - **Persistent terminal sessions** for long-running processes and interactive shells
 - **Session management** with start, continue, stop, and list operations
 - **Configurable wait intervals** for output collection (minInterval, settleInterval, maxInterval)
 - **Position-based output tracking** for incremental reads
 - **Chat command interface** with `/terminal` command for manual session management
+
+## Installation
+
+```bash
+bun install @tokenring-ai/terminal
+```
 
 ## Dependencies
 
@@ -65,10 +65,11 @@ The main service class that manages terminal operations and command execution.
   - Lifecycle method called by the application to initialize the service
   - Sets up the default terminal provider from configuration
 
-- `attach(agent: Agent): void`
+- `attach(agent: Agent, creationContext: AgentCreationContext): void`
   - Attaches the service to an agent
   - Merges agent-specific terminal configuration with defaults
   - Initializes the agent's TerminalState slice
+  - Adds terminal provider info to creation context
 
 - `executeCommand(command: string, args: string[], options: Partial<ExecuteCommandOptions>, agent: Agent): Promise<ExecuteCommandResult>`
   - Execute a shell command
@@ -227,7 +228,6 @@ type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
 
 ```typescript
 interface ExecuteCommandOptions {
-  input?: string;
   timeoutSeconds: number;
   env?: Record<string, string | undefined>;
   workingDirectory?: string;
@@ -285,9 +285,9 @@ interface SessionStatus {
 }
 ```
 
-### State Management
+## State Management
 
-#### TerminalState
+### TerminalState
 
 Agent state slice for terminal-specific configuration and persistent sessions.
 
@@ -321,9 +321,9 @@ interface SessionRecord {
 - `deserialize(data: z.output<typeof serializationSchema>): void` - Deserialize state
 - `show(): string[]` - Display state information
 
-### Tools
+## Tools
 
-#### terminal_bash
+### terminal_bash
 
 Tool for executing shell commands through the agent interface.
 
@@ -346,7 +346,21 @@ Tool for executing shell commands through the agent interface.
 - Unknown commands: Requires user confirmation with 10-second timeout
 - Dangerous commands: Requires user confirmation without timeout
 
-#### terminal_start
+**Example Output:**
+
+```
+[ls -la]
+Success: True
+Exit Code: 0
+
+Output:
+total 48
+drwxr-xr-x  5 user  staff   160 Jan 1 12:00 .
+drwxr-xr-x  3 user  staff    96 Jan 1 12:00 ..
+-rw-r--r--  1 user  staff  1024 Jan 1 12:00 file.txt
+```
+
+### terminal_start
 
 Tool for starting persistent terminal sessions.
 
@@ -361,7 +375,7 @@ Tool for starting persistent terminal sessions.
 3. Waits for initial output using configured intervals
 4. Returns session ID, output, and position marker
 
-**Usage:**
+**Example Output:**
 
 ```
 Terminal Session Started
@@ -369,12 +383,12 @@ Terminal Id: term-1
 Sent Command: npm run dev
 
 Output:
-[initial output]
+Server starting on port 3000...
 ```
 
-**Important:** Only use this for the FIRST command in a new task or when you need to start fresh. Always reuse existing terminal sessions for subsequent commands within the same task.
+**Important:** Only use this for the FIRST command in a new task or when you need to start fresh, or when you intentionally want to leave an existing terminal running. Always try to reuse existing terminal sessions (by using terminal_continue with the provided sessionId) for subsequent commands within the same task. Do not create multiple terminal sessions for a single task unless explicitly necessary.
 
-#### terminal_continue
+### terminal_continue
 
 Tool for continuing interaction with persistent terminal sessions.
 
@@ -391,18 +405,19 @@ Tool for continuing interaction with persistent terminal sessions.
 4. Returns new output since last position
 5. Updates position in state
 
-**Usage:**
+**Example Output:**
 
 ```
 Terminal Session: term-1
 
 Output:
-[new output]
+Server started on port 3000
+Listening for requests...
 ```
 
 **Important:** ALWAYS use this tool instead of terminal_start for follow-up commands within the same task. This ensures efficient use of resources and maintains session state across multiple commands.
 
-#### terminal_stop
+### terminal_stop
 
 Tool for terminating persistent terminal sessions.
 
@@ -415,19 +430,19 @@ Tool for terminating persistent terminal sessions.
 1. Terminates the process
 2. Removes session from state
 
-**Returns:**
+**Example Output:**
 
 ```
 Terminal session term-1 terminated.
 ```
 
-#### terminal_list
+### terminal_list
 
 Tool for listing all active persistent terminal sessions.
 
 **Parameters:** None
 
-**Returns:**
+**Example Output:**
 
 ```
 Active Terminal Sessions:
@@ -437,7 +452,7 @@ term-1       | npm run dev                    | 1024     | Yes     | 45s
 term-2       | python server.py               | 2048     | Yes     | 120s
 ```
 
-#### terminal_output
+### terminal_output
 
 Tool for getting the complete output from a terminal session without truncation.
 
@@ -451,19 +466,19 @@ Tool for getting the complete output from a terminal session without truncation.
 2. Does not use the incremental waiting strategy
 3. Returns the full output without truncation
 
-**Usage:**
+**Example Output:**
 
 ```
 Terminal Session: term-1
 Complete Output:
-[complete output]
+[complete output without truncation]
 ```
 
 **Important:** Use this only if the incremental output from terminal_start or terminal_continue gets confusing.
 
-### Chat Commands
+## Chat Commands
 
-#### /terminal Command
+### /terminal Command
 
 The `/terminal` command provides a manual interface for managing terminal sessions and providers.
 
@@ -473,9 +488,7 @@ The `/terminal` command provides a manual interface for managing terminal sessio
 /terminal [action] [subaction] [arguments]
 ```
 
-**Actions:**
-
-##### Session Management
+#### Session Management
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -485,7 +498,7 @@ The `/terminal` command provides a manual interface for managing terminal sessio
 | `output <sessionId>` | Get complete output without truncation | `/terminal output term-1` |
 | `stop <sessionId>` | Terminate a session | `/terminal stop term-1` |
 
-##### Provider Management
+#### Provider Management
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -652,8 +665,8 @@ import TerminalService from '@tokenring-ai/terminal';
 const terminal = new TerminalService(config);
 
 const result = await terminal.executeCommand(
-  'npm install',
-  [],
+  'npm',
+  ['install'],
   { timeoutSeconds: 120 },
   agent
 );
@@ -684,6 +697,8 @@ const commands = terminal.parseCompoundCommand('git add . && git commit -m "test
 ### Register Terminal Provider
 
 ```typescript
+import type { TerminalProvider } from '@tokenring-ai/terminal';
+
 class MyTerminalProvider implements TerminalProvider {
   async executeCommand(command, args, options) {
     // Implementation
@@ -691,6 +706,30 @@ class MyTerminalProvider implements TerminalProvider {
 
   async runScript(script, options) {
     // Implementation
+  }
+
+  async startInteractiveSession(options) {
+    // Implementation
+  }
+
+  async sendInput(sessionId, input) {
+    // Implementation
+  }
+
+  async collectOutput(sessionId, fromPosition, waitOptions) {
+    // Implementation
+  }
+
+  async terminateSession(sessionId) {
+    // Implementation
+  }
+
+  getSessionStatus(sessionId) {
+    // Implementation
+  }
+
+  getIsolationLevel() {
+    return 'none';
   }
 }
 
@@ -872,6 +911,10 @@ Example test:
 
 ```typescript
 // Test for command safety validation
+import TerminalService from '@tokenring-ai/terminal';
+
+const terminalService = new TerminalService(config);
+
 expect(terminalService.getCommandSafetyLevel('rm -rf /')).toBe('dangerous');
 expect(terminalService.getCommandSafetyLevel('npm install')).toBe('safe');
 ```
@@ -885,27 +928,28 @@ pkg/terminal/
 ├── TerminalService.ts       # Core service implementation
 ├── TerminalProvider.ts      # Provider interface and types
 ├── schema.ts                # Configuration schemas
-├── state/terminalState.ts   # State management for terminal sessions
-├── tools/                   # Tool definitions
+├── state/
+│   └── terminalState.ts     # State management for terminal sessions
+├── tools/
 │   ├── bash.ts              # terminal_bash tool
 │   ├── terminal_start.ts    # terminal_start tool
 │   ├── terminal_continue.ts # terminal_continue tool
 │   ├── terminal_stop.ts     # terminal_stop tool
 │   ├── terminal_list.ts     # terminal_list tool
 │   └── terminal_output.ts   # terminal_output tool
-├── commands/                # Chat command implementations
-│   └── terminal.ts          # /terminal command router
+├── commands/
+│   └── terminal/
 │       ├── list.ts          # /terminal list subcommand
 │       ├── start.ts         # /terminal start subcommand
 │       ├── send.ts          # /terminal send subcommand
 │       ├── output.ts        # /terminal output subcommand
 │       ├── stop.ts          # /terminal stop subcommand
-│       └── provider/        # Provider management commands
+│       └── provider/
 │           ├── get.ts       # /terminal provider get
 │           ├── set.ts       # /terminal provider set
 │           ├── select.ts    # /terminal provider select
 │           └── list.ts      # /terminal provider list
-├── test/                    # Test files
+├── test/
 │   ├── createTestTerminal.ts # Test utility
 │   └── TerminalService.commandValidation.test.ts # Command validation tests
 ├── vitest.config.ts         # Vitest configuration
@@ -913,21 +957,58 @@ pkg/terminal/
 └── README.md                # This file
 ```
 
-## Dependencies
+## Error Handling
 
-### Production Dependencies
+### Error Types
 
-- `@tokenring-ai/agent` (0.2.0) - Agent orchestration system
-- `@tokenring-ai/app` (0.2.0) - Application framework
-- `@tokenring-ai/chat` (0.2.0) - Chat service integration
-- `@tokenring-ai/utility` (0.2.0) - Shared utilities
-- `zod` (^4.3.6) - Schema validation
+The package may throw the following errors:
 
-### Development Dependencies
+- **Error**: General errors with descriptive messages
+  - `"No terminal provider configured for agent"` - When no provider is set
+  - `"Session {sessionId} not found"` - When accessing a non-existent session
+  - `"[toolName] {message}"` - Tool-specific errors
 
-- `@vitest/coverage-v8` (^4.0.18) - Test coverage
-- `vitest` (^4.0.18) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- **CommandFailedError**: Command execution failures
+  - `"Command cannot be empty"` - When starting a session without a command
+  - `"Usage: /terminal send <sessionId> <input>"` - Invalid send command syntax
+  - `"Usage: /terminal output <sessionId>"` - Missing session ID
+  - `"Usage: /terminal stop <sessionId>"` - Missing session ID
+  - `"Provider \"{name}\" not found."` - Invalid provider name
+
+### Error Handling Examples
+
+```typescript
+try {
+  await terminal.executeCommand('ls', [], {}, agent);
+} catch (error) {
+  if (error.message.includes('No terminal provider')) {
+    console.error('Please configure a terminal provider first');
+  } else {
+    console.error('Command execution failed:', error.message);
+  }
+}
+```
+
+## Best Practices
+
+1. **Use persistent sessions for long-running processes**: Always use `terminal_start` and `terminal_continue` for development servers or interactive shells instead of `terminal_bash`.
+
+2. **Always clean up sessions**: Use `terminal_stop` to terminate sessions when done to prevent orphaned processes.
+
+3. **Check command safety**: Be aware that unknown and dangerous commands require user confirmation.
+
+4. **Configure appropriate timeouts**: Set timeout values based on expected command execution times.
+
+5. **Use output truncation wisely**: Configure `cropOutput` based on your needs to avoid excessive output.
+
+6. **Monitor session state**: Use `terminal_list` to track active sessions and prevent resource exhaustion.
+
+## Related Components
+
+- `@tokenring-ai/agent` - Agent orchestration system
+- `@tokenring-ai/app` - Application framework
+- `@tokenring-ai/chat` - Chat service integration
+- `@tokenring-ai/utility` - Shared utilities
 
 ## License
 
