@@ -3,11 +3,11 @@ import type {AgentCreationContext} from "@tokenring-ai/agent/types";
 import {TokenRingService} from "@tokenring-ai/app/types";
 import deepMerge from "@tokenring-ai/utility/object/deepMerge";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
+import {setTimeout} from "timers/promises";
 import {z} from "zod";
-import {type ExecuteCommandOptions, type ExecuteCommandResult, type TerminalProvider} from "./TerminalProvider.js";
 import {TerminalAgentConfigSchema, TerminalConfigSchema} from "./schema.ts";
 import {TerminalState} from "./state/terminalState.js";
-import { setTimeout } from "timers/promises";
+import {type ExecuteCommandOptions, type ExecuteCommandResult, type TerminalProvider} from "./TerminalProvider.js";
 
 export default class TerminalService implements TokenRingService {
   readonly name = "TerminalService";
@@ -36,9 +36,7 @@ export default class TerminalService implements TokenRingService {
 
     const terminalProviderName = config.provider ?? this.defaultProvider;
     const terminalProvider = this.terminalProviderRegistry.getItemByName(terminalProviderName);
-    if (terminalProvider) {
-      creationContext.items.push(`Terminal provider: ${terminalProviderName} (isolation: ${terminalProvider.getIsolationLevel()})`);
-    }
+    creationContext.items.push(`Terminal Provider: ${terminalProvider?.displayName ?? '(none)'}`);
   }
 
   requireActiveTerminal(agent: Agent): TerminalProvider {

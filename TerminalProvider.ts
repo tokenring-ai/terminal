@@ -1,6 +1,3 @@
-import {Agent} from "@tokenring-ai/agent";
-import type {AgentCreationContext} from "@tokenring-ai/agent/types";
-
 export interface ExecuteCommandOptions {
   timeoutSeconds: number;
   env?: Record<string, string | undefined>;
@@ -45,6 +42,8 @@ export interface SessionStatus {
 export type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
 
 export interface TerminalProvider {
+  displayName: string;
+
   executeCommand(
     command: string,
     args: string[],
