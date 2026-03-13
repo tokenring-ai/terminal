@@ -7,6 +7,7 @@ export interface ExecuteCommandOptions {
 export type ExecuteCommandResult = {
   status: "success",
   output: string,
+  exitCode: 0,
 } | {
   status: "badExitCode",
   output: string,

@@ -1,5 +1,6 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
+import intelligentTruncate from "@tokenring-ai/utility/string/intelligentTruncate";
 import {z} from "zod";
 import {TerminalState} from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
@@ -27,9 +28,7 @@ export async function execute(
     throw new Error(`[${name}] command is required`);
   }
 
-  agent.infoMessage(
-    `[${name}] Running shell command: ${cmdString}`,
-  );
+  agent.infoMessage(`Running ${cmdString}`);
 
   const commandSafetyLevel = terminal.getCommandSafetyLevel(cmdString);
   if (commandSafetyLevel === "unknown") {
@@ -46,28 +45,43 @@ export async function execute(
     if (!confirmed) throw new Error("User did not approve command execution");
   }
 
-  try {
-    const result = await terminal.runScript(command, {
-      timeoutSeconds: bashOptions.timeoutSeconds,
-    }, agent);
+  const startTime = Date.now();
+  const result = await terminal.runScript(command, {
+    timeoutSeconds: bashOptions.timeoutSeconds,
+  }, agent);
 
-    const output = result.status === "success" || result.status === "badExitCode" ? result.output : result.status === "unknownError" ? result.error : "Timeout";
-    let croppedOutput = output.length > bashOptions.cropOutput
-      ? output.trim().substring(0, bashOptions.cropOutput) + "\n [...Results were too long, truncated...]\n"
-      : output;
+  const runTime = Math.floor(Date.now() - startTime);
 
-    return `
-[${command}]
-Success: ${result.status === "success" ? "True" : "False"}
-Exit Code: ${result.status === "badExitCode" ? result.exitCode : 0}
-  
-Output: 
-${croppedOutput}
-`.trim();
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`[${name}] ${message}`);
+  let resultText = `\$ ${command.trim()}\n`;
+
+  switch (result.status) {
+    case "success":
+    case "badExitCode": {
+      let croppedOuput = intelligentTruncate(result.output, bashOptions.cropOutput, "\n [...Results were too long, truncated...]").trim();
+
+      resultText += `${croppedOuput}\n[exit: ${result.exitCode} | ${runTime}ms]`;
+    } break;
+    case "timeout":
+      resultText += "[timeout: The command took too long to complete, and timed out]";
+      break;
+    case "unknownError":
+      resultText += `[error: ${result.error}]`;
+      break;
+    default:
+      const foo: never = result;
+      throw new Error(`[${name}] Unknown result status: ${foo}`);
   }
+
+  return {
+    type: 'text',
+    text: resultText,
+    artifact: {
+      name: `Bash (${intelligentTruncate(command, 100)})`,
+      mimeType: "application/x-shellscript",
+      encoding: "text",
+      body: resultText
+    }
+  };
 }
 
 const description =
