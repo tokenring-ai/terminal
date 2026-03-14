@@ -7,6 +7,7 @@ import TerminalService from '../TerminalService.js';
 const testConfig = {
   agentDefaults: {
     provider: 'test',
+    workingDirectory: process.cwd(),
   },
   providers: {
     test: {

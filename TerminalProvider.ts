@@ -1,7 +1,7 @@
 export interface ExecuteCommandOptions {
   timeoutSeconds: number;
   env?: Record<string, string | undefined>;
-  workingDirectory?: string;
+  workingDirectory: string;
 }
 
 export type ExecuteCommandResult = {

@@ -87,6 +87,18 @@ describe('TerminalService Command Validation', () => {
       expect(commands).toEqual(['echo', 'ls']);
     });
 
+    it('should ignore separator characters inside quoted arguments', () => {
+      const commands = terminalService.parseCompoundCommand(
+        'grep -r "rpc\\|RPC\\|command\\|Command\\|slash" pkg/docker/ --include="*.ts" | grep -v "node_modules" | head -20'
+      );
+      expect(commands).toEqual(['grep', 'grep', 'head']);
+    });
+
+    it('should treat backticks as nested subcommands', () => {
+      const commands = terminalService.parseCompoundCommand('echo `grep test README.md | head -1`');
+      expect(commands).toEqual(['echo', 'grep', 'head']);
+    });
+
     it('should handle empty commands', () => {
       expect(terminalService.parseCompoundCommand('')).toEqual([]);
       expect(terminalService.parseCompoundCommand('   ')).toEqual([]);
@@ -112,6 +124,14 @@ describe('TerminalService Command Validation', () => {
 
     it('should validate complex compound commands', () => {
       expect(terminalService.getCommandSafetyLevel('npm install; yarn build && tsc && echo "done"')).toBe('safe');
+    });
+
+    it('should validate quoted grep pipelines as safe', () => {
+      expect(
+        terminalService.getCommandSafetyLevel(
+          'grep -r "rpc\\|RPC\\|command\\|Command\\|slash" pkg/docker/ --include="*.ts" | grep -v "node_modules" | head -20'
+        )
+      ).toBe('safe');
     });
   });
 
@@ -147,7 +167,7 @@ describe('TerminalService Command Validation', () => {
 
     it('should allow legitimate development commands', () => {
       expect(terminalService.getCommandSafetyLevel('cd app/coder/electron && mkdir -p resources hooks && touch resources/entitlements.plist resources/LICENSE resources/background.png')).toBe('safe');
-      expect(terminalService.getCommandSafetyLevel('grep -n "attach\\|clearCurrentPost\\|show()\\|reset(" pkg/wordpress/README.md')).toBe('unknown');
+      expect(terminalService.getCommandSafetyLevel('grep -n "attach\\|clearCurrentPost\\|show()\\|reset(" pkg/wordpress/README.md')).toBe('safe');
       expect(terminalService.getCommandSafetyLevel('npm install')).toBe('safe');
       expect(terminalService.getCommandSafetyLevel('yarn add package-name')).toBe('safe');
       expect(terminalService.getCommandSafetyLevel('bun add package-name')).toBe('safe');

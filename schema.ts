@@ -2,11 +2,12 @@ import z from "zod";
 
 export const TerminalAgentConfigSchema = z.object({
   provider: z.string().optional(),
+  workingDirectory: z.string().optional(),
   bash: z.object({
     cropOutput: z.number().optional(),
     timeoutSeconds: z.number().optional(),
   }).optional(),
-  persistent: z.object({
+  interactive: z.object({
     minInterval: z.number().optional(),
     settleInterval: z.number().optional(),
     maxInterval: z.number().optional(),
@@ -16,6 +17,7 @@ export const TerminalAgentConfigSchema = z.object({
 export const TerminalConfigSchema = z.object({
   agentDefaults: z.object({
     provider: z.string(),
+    workingDirectory: z.string(),
     bash: z.object({
       cropOutput: z.number().default(10000),
       timeoutSeconds: z.number().default(60),
@@ -28,7 +30,7 @@ export const TerminalConfigSchema = z.object({
   }),
   providers: z.record(z.string(), z.any()),
   safeCommands: z.array(z.string()).default([
-    "awk", "cat", "cd", "chdir", "diff", "echo", "find", "git", "grep", "head", "help", "hostname", "id", "ipconfig", "tee",
+    "awk", "sed", "cat", "cd", "chdir", "diff", "echo", "find", "git", "grep", "head", "help", "hostname", "id", "ipconfig", "tee",
     "ls", "netstat", "ps", "pwd", "sort", "tail", "tree", "type", "uname", "uniq", "wc", "which", "touch", "mkdir",
     "npm", "yarn", "bun", "tsc", "node", "npx", "bunx", "vitest"
   ]),

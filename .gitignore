@@ -1,9 +1,8 @@
 # ---This file is auto-generated, see /scripts/generate-package-files.pl
 
+/awscliv2.sig
 build
-/.claude/
 coverage
-*.db
 dist
 .DS_Store
 .env
@@ -20,4 +19,3 @@ node_modules
 out/
 *.pem
 *.sqlite
-/.zencoder/

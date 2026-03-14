@@ -12,6 +12,7 @@ interface SessionRecord {
 
 const serializationSchema = z.object({
   providerName: z.string().nullable(),
+  workingDirectory: z.string(),
   bash: TerminalConfigSchema.shape.agentDefaults.shape.bash,
   interactiveConfig: z.object({
     minInterval: z.number(),
@@ -22,6 +23,7 @@ const serializationSchema = z.object({
 
 export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
   providerName: string | null;
+  workingDirectory: string;
   bash: z.output<typeof TerminalConfigSchema>["agentDefaults"]["bash"];
   sessions: Map<string, SessionRecord> = new Map();
   interactiveConfig: z.output<typeof TerminalConfigSchema>["agentDefaults"]["interactive"];
@@ -29,6 +31,7 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
   constructor(readonly initialConfig: z.output<typeof TerminalConfigSchema>["agentDefaults"]) {
     super("TerminalState", serializationSchema);
     this.providerName = initialConfig.provider ?? null;
+    this.workingDirectory = initialConfig.workingDirectory;
     this.bash = initialConfig.bash;
     this.interactiveConfig = initialConfig.interactive;
   }
@@ -65,6 +68,7 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
   serialize(): z.output<typeof serializationSchema> {
     return {
       providerName: this.providerName,
+      workingDirectory: this.workingDirectory,
       bash: this.bash,
       interactiveConfig: this.interactiveConfig,
     };
@@ -72,6 +76,7 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
 
   deserialize(data: z.output<typeof serializationSchema>): void {
     this.providerName = data.providerName;
+    this.workingDirectory = data.workingDirectory;
     this.bash = data.bash;
     this.interactiveConfig = data.interactiveConfig;
   }
@@ -79,6 +84,7 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
   show(): string[] {
     return [
       `Provider: ${this.providerName}`,
+      `Working Directory: ${this.workingDirectory}`,
       `Output Crop Limit: ${this.bash.cropOutput} chars`,
       `Active Sessions: ${this.sessions.size}`,
     ];

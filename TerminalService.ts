@@ -3,6 +3,7 @@ import type {AgentCreationContext} from "@tokenring-ai/agent/types";
 import {TokenRingService} from "@tokenring-ai/app/types";
 import deepMerge from "@tokenring-ai/utility/object/deepMerge";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
+import path from "node:path";
 import {setTimeout} from "timers/promises";
 import {z} from "zod";
 import {TerminalAgentConfigSchema, TerminalConfigSchema} from "./schema.ts";
@@ -53,6 +54,33 @@ export default class TerminalService implements TokenRingService {
     agent.infoMessage(`Terminal provider changed to ${providerName} (isolation: ${newProvider.getIsolationLevel()})`);
   }
 
+  private getWorkingDirectory(agent: Agent): string {
+    return agent.getState(TerminalState).workingDirectory;
+  }
+
+  private resolveWorkingDirectory(agent: Agent, workingDirectory?: string): string {
+    const agentWorkingDirectory = this.getWorkingDirectory(agent);
+    if (!workingDirectory) {
+      return agentWorkingDirectory;
+    }
+
+    return path.isAbsolute(workingDirectory)
+      ? path.normalize(workingDirectory)
+      : path.resolve(agentWorkingDirectory, workingDirectory);
+  }
+
+  private resolveExecuteOptions(
+    options: Partial<ExecuteCommandOptions>,
+    agent: Agent,
+    timeoutSeconds: number
+  ): ExecuteCommandOptions {
+    return {
+      timeoutSeconds,
+      ...options,
+      workingDirectory: this.resolveWorkingDirectory(agent, options.workingDirectory),
+    };
+  }
+
   async executeCommand(
     command: string,
     args: string[],
@@ -60,12 +88,12 @@ export default class TerminalService implements TokenRingService {
     agent: Agent
   ): Promise<ExecuteCommandResult> {
     return this.requireActiveTerminal(agent)
-      .executeCommand(command, args,{ timeoutSeconds: 120, ...options } as ExecuteCommandOptions);
+      .executeCommand(command, args, this.resolveExecuteOptions(options, agent, 120));
   }
 
   async runScript(script: string, options: Partial<ExecuteCommandOptions>, agent: Agent): Promise<ExecuteCommandResult> {
     return this.requireActiveTerminal(agent)
-      .runScript(script, { timeoutSeconds: 120, ...options } as ExecuteCommandOptions);
+      .runScript(script, this.resolveExecuteOptions(options, agent, 120));
   }
 
   async startInteractiveSession(
@@ -73,8 +101,8 @@ export default class TerminalService implements TokenRingService {
     command: string
   ): Promise<string> {
     const provider = this.requireActiveTerminal(agent);
-    
-    const sessionId = await provider.startInteractiveSession({ timeoutSeconds: 0 });
+
+    const sessionId = await provider.startInteractiveSession(this.resolveExecuteOptions({}, agent, 0));
     await provider.sendInput(sessionId, command);
 
     agent.mutateState(TerminalState, (state: TerminalState) => {
@@ -212,20 +240,253 @@ export default class TerminalService implements TokenRingService {
   }
 
   parseCompoundCommand(command: string): string[] {
-    const separators = ["&&", "||", ";", "|"];
-    let commands = [command];
+    const parsedCommands: string[] = [];
+    this.collectCommandNames(command, parsedCommands);
+    return parsedCommands;
+  }
 
-    for (const sep of separators) {
-      const newCommands: string[] = [];
-      for (const cmd of commands) {
-        newCommands.push(...cmd.split(sep));
+  private collectCommandNames(command: string, parsedCommands: string[]): void {
+    for (const segment of this.splitCommandSegments(command)) {
+      const commandName = this.extractCommandName(segment);
+      if (commandName) {
+        parsedCommands.push(commandName);
       }
-      commands = newCommands;
+
+      for (const subcommand of this.extractBacktickSubcommands(segment)) {
+        this.collectCommandNames(subcommand, parsedCommands);
+      }
+    }
+  }
+
+  private splitCommandSegments(command: string): string[] {
+    const segments: string[] = [];
+    let current = "";
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let inBacktick = false;
+    let escaped = false;
+
+    const pushCurrent = () => {
+      const trimmed = current.trim();
+      if (trimmed.length > 0) {
+        segments.push(trimmed);
+      }
+      current = "";
+    };
+
+    for (let i = 0; i < command.length; i++) {
+      const char = command[i];
+      const next = command[i + 1];
+
+      if (escaped) {
+        current += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\" && !inSingleQuote) {
+        current += char;
+        escaped = true;
+        continue;
+      }
+
+      if (!inBacktick && char === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+        current += char;
+        continue;
+      }
+
+      if (!inBacktick && char === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+        current += char;
+        continue;
+      }
+
+      if (char === "`" && !inSingleQuote) {
+        inBacktick = !inBacktick;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && !inBacktick) {
+        if ((char === "&" && next === "&") || (char === "|" && next === "|")) {
+          pushCurrent();
+          i += 1;
+          continue;
+        }
+
+        if (char === ";" || char === "|") {
+          pushCurrent();
+          continue;
+        }
+      }
+
+      current += char;
     }
 
-    return commands
-      .map(cmd => cmd.trim())
-      .filter(cmd => cmd.length > 0)
-      .map(cmd => cmd.split(" ")[0]);
+    pushCurrent();
+    return segments;
+  }
+
+  private extractBacktickSubcommands(command: string): string[] {
+    const subcommands: string[] = [];
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let escaped = false;
+    let backtickStart: number | null = null;
+
+    for (let i = 0; i < command.length; i++) {
+      const char = command[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\" && !inSingleQuote) {
+        escaped = true;
+        continue;
+      }
+
+      if (backtickStart !== null) {
+        if (char === "`") {
+          subcommands.push(command.slice(backtickStart, i));
+          backtickStart = null;
+        }
+        continue;
+      }
+
+      if (char === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+        continue;
+      }
+
+      if (char === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+        continue;
+      }
+
+      if (char === "`" && !inSingleQuote) {
+        backtickStart = i + 1;
+      }
+    }
+
+    if (backtickStart !== null) {
+      subcommands.push(command.slice(backtickStart));
+    }
+
+    return subcommands;
+  }
+
+  private extractCommandName(command: string): string | null {
+    const tokens = this.tokenizeCommand(command);
+
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+
+      if (this.isRedirectionToken(token)) {
+        if (this.requiresRedirectionTarget(token)) {
+          i += 1;
+        }
+        continue;
+      }
+
+      if (this.isEnvironmentAssignment(token)) {
+        continue;
+      }
+
+      if (token.includes("`")) {
+        continue;
+      }
+
+      const normalizedToken = this.stripWrappingQuotes(token);
+      return normalizedToken.length > 0 ? normalizedToken : null;
+    }
+
+    return null;
+  }
+
+  private tokenizeCommand(command: string): string[] {
+    const tokens: string[] = [];
+    let current = "";
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let inBacktick = false;
+    let escaped = false;
+
+    const pushCurrent = () => {
+      if (current.length > 0) {
+        tokens.push(current);
+      }
+      current = "";
+    };
+
+    for (let i = 0; i < command.length; i++) {
+      const char = command[i];
+
+      if (escaped) {
+        current += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\" && !inSingleQuote) {
+        current += char;
+        escaped = true;
+        continue;
+      }
+
+      if (!inBacktick && char === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+        current += char;
+        continue;
+      }
+
+      if (!inBacktick && char === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+        current += char;
+        continue;
+      }
+
+      if (char === "`" && !inSingleQuote) {
+        inBacktick = !inBacktick;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && !inBacktick && /\s/.test(char)) {
+        pushCurrent();
+        continue;
+      }
+
+      current += char;
+    }
+
+    pushCurrent();
+    return tokens;
+  }
+
+  private isEnvironmentAssignment(token: string): boolean {
+    return /^[a-z_][a-z0-9_]*=.*/i.test(token);
+  }
+
+  private isRedirectionToken(token: string): boolean {
+    return /^(?:\d+|&)?(?:>>?|<<?|<>|<<<|>&|<&|&>>?|>\|).*/.test(token);
+  }
+
+  private requiresRedirectionTarget(token: string): boolean {
+    return /^(?:\d+|&)?(?:>>?|<<?|<>|<<<|>&|<&|&>>?|>\|)$/.test(token);
+  }
+
+  private stripWrappingQuotes(token: string): string {
+    if (token.length >= 2) {
+      const first = token[0];
+      const last = token[token.length - 1];
+      if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+        return token.slice(1, -1);
+      }
+    }
+
+    return token;
   }
 }
