@@ -1,8 +1,8 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import type {TreeLeaf} from "@tokenring-ai/agent/question";
 import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
-import TerminalService from "../../../TerminalService.ts";
 import {TerminalState} from "../../../state/terminalState.ts";
+import TerminalService from "../../../TerminalService.ts";
 
 async function execute(_remainder: string, agent: Agent): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
@@ -25,7 +25,8 @@ async function execute(_remainder: string, agent: Agent): Promise<string> {
   return "Provider selection cancelled.";
 }
 
-export default { name: "terminal provider select", description: "/terminal provider select - Interactively select a provider", help: `# /terminal provider select
+export default {
+  name: "terminal provider select", description: "Interactively select a provider", help: `# /terminal provider select
 
 Interactively select the active terminal provider. Auto-selects if only one provider is configured.
 

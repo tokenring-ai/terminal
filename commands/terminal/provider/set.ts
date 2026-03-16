@@ -14,7 +14,8 @@ async function execute(remainder: string, agent: Agent): Promise<string> {
   }
 }
 
-export default { name: "terminal provider set", description: "/terminal provider set - Set the active provider", help: `# /terminal provider set <name>
+export default {
+  name: "terminal provider set", description: "Set the active provider", help: `# /terminal provider set <name>
 
 Set the active terminal provider by name.
 

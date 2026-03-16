@@ -6,7 +6,7 @@ import TerminalService from "../../TerminalService.ts";
 
 export default {
   name: "terminal output",
-  description: "/terminal output - Get complete output from a session",
+  description: "Get complete output from a session",
   help: `# /terminal output <sessionId>
 
 Get the complete output from a terminal session without truncation.

@@ -5,7 +5,7 @@ import TerminalService from "../../TerminalService.ts";
 
 export default {
   name: "terminal stop",
-  description: "/terminal stop - Terminate a terminal session",
+  description: "Terminate a terminal session",
   help: `# /terminal stop <sessionId>
 
 Terminate a persistent terminal session.

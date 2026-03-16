@@ -4,7 +4,7 @@ import TerminalService from "../../../TerminalService.ts";
 
 export default {
   name: "terminal provider list",
-  description: "/terminal provider list - List available providers",
+  description: "List available providers",
   help: `# /terminal provider list
 
 List all available terminal providers.

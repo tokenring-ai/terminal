@@ -14,7 +14,8 @@ async function execute(remainder: string, agent: Agent): Promise<string> {
   return codeBlock(result.output);
 }
 
-export default { name: "terminal send", description: "/terminal send - Send input to a session", help: `# /terminal send <sessionId> <input>
+export default {
+  name: "terminal send", description: "Send input to a session", help: `# /terminal send <sessionId> <input>
 
 Send input to a running terminal session.
 

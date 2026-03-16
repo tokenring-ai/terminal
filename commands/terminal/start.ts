@@ -13,7 +13,8 @@ async function execute(remainder: string, agent: Agent): Promise<string> {
   return `\n***Terminal session started***\n- Terminal Session Id: ${sessionId}\n\n${codeBlock(result.output)}\n`.trim();
 }
 
-export default { name: "terminal start", description: "/terminal start - Start a new terminal session", help: `# /terminal start <command>
+export default {
+  name: "terminal start", description: "Start a new terminal session", help: `# /terminal start <command>
 
 Start a new persistent terminal session with the given command.
 

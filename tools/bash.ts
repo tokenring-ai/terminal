@@ -84,8 +84,7 @@ export async function execute(
   };
 }
 
-const description =
-  "Run a shell command. Output is truncated to reasonable size. WARNING: Use with caution. Not sandboxed!";
+const description = "Run a shell command. Output is truncated to reasonable size. WARNING: Use with caution. Not sandboxed!";
 
 const inputSchema = z.object({
   command: z.string().describe("The shell command to execute."),

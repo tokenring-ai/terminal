@@ -4,7 +4,7 @@ import {TerminalState} from "../../state/terminalState.ts";
 
 export default {
   name: "terminal list",
-  description: "/terminal list - List active terminal sessions",
+  description: "List active terminal sessions",
   help: `# /terminal list
 
 List all active persistent terminal sessions.

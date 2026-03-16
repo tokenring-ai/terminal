@@ -4,7 +4,7 @@ import {TerminalState} from "../../../state/terminalState.ts";
 
 export default {
   name: "terminal provider get",
-  description: "/terminal provider get - Show current provider",
+  description: "Show current provider",
   help: `# /terminal provider get
 
 Display the currently active terminal provider.
