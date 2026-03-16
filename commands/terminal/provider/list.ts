@@ -1,20 +1,20 @@
-import Agent from "@tokenring-ai/agent/Agent";
-import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import TerminalService from "../../../TerminalService.ts";
+
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
 
 export default {
   name: "terminal provider list",
   description: "List available providers",
-  help: `# /terminal provider list
-
-List all available terminal providers.
+  help: `List all available terminal providers.
 
 ## Example
 
 /terminal provider list`,
-  execute: async (_remainder: string, agent: Agent): Promise<string> => {
+  inputSchema,
+  execute: async ({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
     const providers = agent.requireServiceByType(TerminalService).getAvailableProviders();
     if (providers.length === 0) return "No terminal providers are registered.";
     return `Available terminal providers:\n${providers.map(p => `- ${p}`).join('\n')}`;
   },
-} satisfies TokenRingAgentCommand;
+} satisfies TokenRingAgentCommand<typeof inputSchema>;

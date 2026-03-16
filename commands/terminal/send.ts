@@ -1,24 +1,31 @@
-import Agent from "@tokenring-ai/agent/Agent";
-import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
-import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import codeBlock from "@tokenring-ai/utility/string/codeBlock";
 import TerminalService from "../../TerminalService.ts";
 
-async function execute(remainder: string, agent: Agent): Promise<string> {
+const inputSchema = {
+  args: {},
+  positionals: [
+    {name: "sessionId", description: "Session ID", required: true},
+    {name: "input", description: "Input to send", required: true, greedy: true},
+  ],
+  allowAttachments: false,
+} as const satisfies AgentCommandInputSchema;
+
+async function execute({positionals: {sessionId, input}, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
-  const parts = remainder.trim().split(/\s+/);
-  if (parts.length < 2) throw new CommandFailedError("Usage: /terminal send <sessionId> <input>");
-  const [sessionId, ...rest] = parts;
-  await terminal.sendInputToSession(sessionId, rest.join(" "), agent);
+  await terminal.sendInputToSession(sessionId, input, agent);
   const result = await terminal.retrieveSessionOutput(sessionId, agent);
   return codeBlock(result.output);
 }
 
 export default {
-  name: "terminal send", description: "Send input to a session", help: `# /terminal send <sessionId> <input>
-
-Send input to a running terminal session.
+  name: "terminal send",
+  description: "Send input to a session",
+  help: `Send input to a running terminal session.
 
 ## Example
 
-/terminal send term-1 y`, execute } satisfies TokenRingAgentCommand;
+/terminal send term-1 y`,
+  inputSchema,
+  execute,
+} satisfies TokenRingAgentCommand<typeof inputSchema>;

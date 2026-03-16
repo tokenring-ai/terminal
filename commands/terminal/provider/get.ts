@@ -1,17 +1,17 @@
-import Agent from "@tokenring-ai/agent/Agent";
-import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import {TerminalState} from "../../../state/terminalState.ts";
+
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
 
 export default {
   name: "terminal provider get",
   description: "Show current provider",
-  help: `# /terminal provider get
-
-Display the currently active terminal provider.
+  help: `Display the currently active terminal provider.
 
 ## Example
 
 /terminal provider get`,
-  execute: async (_remainder: string, agent: Agent): Promise<string> =>
+  inputSchema,
+  execute: async ({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> =>
     `Current provider: ${agent.getState(TerminalState).providerName ?? "(none)"}`,
-} satisfies TokenRingAgentCommand;
+} satisfies TokenRingAgentCommand<typeof inputSchema>;

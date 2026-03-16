@@ -1,18 +1,18 @@
-import Agent from "@tokenring-ai/agent/Agent";
-import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import {TerminalState} from "../../state/terminalState.ts";
+
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
 
 export default {
   name: "terminal list",
   description: "List active terminal sessions",
-  help: `# /terminal list
-
-List all active persistent terminal sessions.
+  help: `List all active persistent terminal sessions.
 
 ## Example
 
 /terminal list`,
-  execute: async (_remainder: string, agent: Agent): Promise<string> => {
+  inputSchema,
+  execute: async ({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
     const sessions = agent.getState(TerminalState).listSessions();
     if (sessions.length === 0) return "No active terminal sessions.";
     const rows = sessions.map(s => {
@@ -21,4 +21,4 @@ List all active persistent terminal sessions.
     });
     return `Active Terminal Sessions:\nID           | Command                        | Position | Running | Uptime\n-------------|--------------------------------|----------|---------|--------\n${rows.join('\n')}`;
   },
-} satisfies TokenRingAgentCommand;
+} satisfies TokenRingAgentCommand<typeof inputSchema>;

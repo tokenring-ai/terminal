@@ -1,11 +1,14 @@
-import Agent from "@tokenring-ai/agent/Agent";
 import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
-import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import TerminalService from "../../../TerminalService.ts";
 
-async function execute(remainder: string, agent: Agent): Promise<string> {
-  const providerName = remainder.trim();
-  if (!providerName) throw new CommandFailedError("Usage: /terminal provider set <name>");
+const inputSchema = {
+  args: {},
+  positionals: [{name: "providerName", description: "Provider name", required: true}],
+  allowAttachments: false,
+} as const satisfies AgentCommandInputSchema;
+
+async function execute({positionals: { providerName }, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   try {
     agent.requireServiceByType(TerminalService).setActiveTerminal(providerName, agent);
     return `Active provider set to: ${providerName}`;
@@ -15,10 +18,13 @@ async function execute(remainder: string, agent: Agent): Promise<string> {
 }
 
 export default {
-  name: "terminal provider set", description: "Set the active provider", help: `# /terminal provider set <name>
-
-Set the active terminal provider by name.
+  name: "terminal provider set",
+  description: "Set the active provider",
+  help: `Set the active terminal provider by name.
 
 ## Example
 
-/terminal provider set local`, execute } satisfies TokenRingAgentCommand;
+/terminal provider set local`,
+  inputSchema,
+  execute,
+} satisfies TokenRingAgentCommand<typeof inputSchema>;

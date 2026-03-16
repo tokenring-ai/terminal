@@ -1,10 +1,11 @@
-import Agent from "@tokenring-ai/agent/Agent";
 import type {TreeLeaf} from "@tokenring-ai/agent/question";
-import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import {TerminalState} from "../../../state/terminalState.ts";
 import TerminalService from "../../../TerminalService.ts";
 
-async function execute(_remainder: string, agent: Agent): Promise<string> {
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
+
+async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
   const available = terminal.getAvailableProviders();
   if (available.length === 0) return "No terminal providers are registered.";
@@ -26,10 +27,13 @@ async function execute(_remainder: string, agent: Agent): Promise<string> {
 }
 
 export default {
-  name: "terminal provider select", description: "Interactively select a provider", help: `# /terminal provider select
-
-Interactively select the active terminal provider. Auto-selects if only one provider is configured.
+  name: "terminal provider select",
+  description: "Interactively select a provider",
+  help: `Interactively select the active terminal provider. Auto-selects if only one provider is configured.
 
 ## Example
 
-/terminal provider select`, execute } satisfies TokenRingAgentCommand;
+/terminal provider select`,
+  inputSchema,
+  execute,
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
