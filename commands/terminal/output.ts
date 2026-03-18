@@ -1,12 +1,10 @@
-import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
 import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import codeBlock from "@tokenring-ai/utility/string/codeBlock";
 import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [{name: "sessionId", description: "Session ID", required: true}],
-  allowAttachments: false,
+  positionals: [{name: "sessionId", description: "Session ID", required: true}]
 } as const satisfies AgentCommandInputSchema;
 
 export default {

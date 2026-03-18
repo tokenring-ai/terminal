@@ -3,8 +3,7 @@ import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [{name: "sessionId", description: "Session ID", required: true}],
-  allowAttachments: false,
+  positionals: [{name: "sessionId", description: "Session ID", required: true}]
 } as const satisfies AgentCommandInputSchema;
 
 export default {

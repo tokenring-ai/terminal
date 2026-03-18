@@ -4,8 +4,7 @@ import TerminalService from "../../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [{name: "providerName", description: "Provider name", required: true}],
-  allowAttachments: false,
+  positionals: [{name: "providerName", description: "Provider name", required: true}]
 } as const satisfies AgentCommandInputSchema;
 
 async function execute({positionals: { providerName }, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
