@@ -57,7 +57,7 @@ export async function execute(
   switch (result.status) {
     case "success":
     case "badExitCode": {
-      let croppedOuput = intelligentTruncate(result.output, bashOptions.cropOutput, "\n [...Results were too long, truncated...]").trim();
+      let croppedOuput = intelligentTruncate(result.output, { maxLength: bashOptions.cropOutput, suffix: "\n [...Results were too long, truncated...]" }).trim();
 
       resultText += `${croppedOuput}\n[exit: ${result.exitCode} | ${runTime}ms]`;
     } break;
@@ -76,7 +76,7 @@ export async function execute(
     type: 'text',
     text: resultText,
     artifact: {
-      name: `Bash (${intelligentTruncate(command, 100)})`,
+      name: `Bash (${intelligentTruncate(command, { maxLength: 100 }).trim()})`,
       mimeType: "application/x-shellscript",
       encoding: "text",
       body: resultText
