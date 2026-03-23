@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, it} from 'vitest';
 import TerminalService from '../TerminalService.js';
 import createTestTerminal from './createTestTerminal.js';
+import {TerminalConfigSchema} from '../schema.js';
 
 /**
  * Test suite for TerminalService command validation functionality
@@ -160,7 +161,7 @@ describe('TerminalService Command Validation', () => {
       expect(terminalService.getCommandSafetyLevel('shutdown -h now')).toBe('dangerous');
       expect(terminalService.getCommandSafetyLevel('reboot')).toBe('dangerous');
       expect(terminalService.getCommandSafetyLevel('dd if=/dev/zero of=/dev/sda')).toBe('dangerous');
-      expect(terminalService.getCommandSafetyLevel('find / -name "*.txt" -exec rm {} \;')).toBe('dangerous');
+      expect(terminalService.getCommandSafetyLevel('find / -name "*.txt" -exec rm {} \\;')).toBe('dangerous');
       expect(terminalService.getCommandSafetyLevel('chmod -R 777 /blah')).toBe('dangerous');
       expect(terminalService.getCommandSafetyLevel('chown -R root:root /blah')).toBe('dangerous');
     });
