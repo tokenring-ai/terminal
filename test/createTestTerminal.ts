@@ -1,8 +1,8 @@
 import {z} from "zod";
 
 import {TerminalConfigSchema} from "../schema";
-import TerminalService from '../TerminalService.js';
-import {TestTerminalProvider} from './TestTerminalProvider.js';
+import TerminalService from '../TerminalService.ts';
+import {TestTerminalProvider} from './TestTerminalProvider.ts';
 
 // Test configuration for TerminalService
 const testConfig = {

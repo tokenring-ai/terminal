@@ -1,7 +1,6 @@
 import {beforeEach, describe, expect, it} from 'vitest';
-import TerminalService from '../TerminalService.js';
-import createTestTerminal from './createTestTerminal.js';
-import {TerminalConfigSchema} from '../schema.js';
+import TerminalService from '../TerminalService.ts';
+import createTestTerminal from './createTestTerminal.ts';
 
 /**
  * Test suite for TerminalService command validation functionality

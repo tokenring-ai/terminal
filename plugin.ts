@@ -4,7 +4,7 @@ import {ChatService} from "@tokenring-ai/chat";
 import {z} from "zod";
 import commands from "./commands.ts";
 import packageJSON from "./package.json" with {type: "json"};
-import TerminalService from "./TerminalService.js";
+import TerminalService from "./TerminalService.ts";
 import {TerminalConfigSchema} from "./schema.ts";
 import tools from "./tools.ts";
 

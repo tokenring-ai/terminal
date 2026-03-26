@@ -7,8 +7,8 @@ import path from "node:path";
 import {setTimeout as delay} from "timers/promises";
 import {z} from "zod";
 import {TerminalAgentConfigSchema, TerminalConfigSchema} from "./schema.ts";
-import {TerminalState} from "./state/terminalState.js";
-import {type ExecuteCommandOptions, type ExecuteCommandResult, type TerminalProvider} from "./TerminalProvider.js";
+import {TerminalState} from "./state/terminalState.ts";
+import {type ExecuteCommandOptions, type ExecuteCommandResult, type TerminalProvider} from "./TerminalProvider.ts";
 
 export default class TerminalService implements TokenRingService {
   readonly name = "TerminalService";

@@ -1,13 +1,12 @@
-import {AgentStateSlice} from "@tokenring-ai/agent/types";
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent";
 import createTestingApp from "@tokenring-ai/app/test/createTestingApp";
-import {TerminalState} from "../state/terminalState.js";
-import TerminalService from '../TerminalService.js';
-import {TestTerminalProvider} from './TestTerminalProvider.js';
-import type {ExecuteCommandOptions, ExecuteCommandResult} from '../TerminalProvider.js';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {z} from "zod";
-import {TerminalConfigSchema} from "../schema.js";
+import {TerminalConfigSchema} from "../schema.ts";
+import {TerminalState} from "../state/terminalState.ts";
+import type {ExecuteCommandOptions} from '../TerminalProvider.ts';
+import TerminalService from '../TerminalService.ts';
+import {TestTerminalProvider} from './TestTerminalProvider.ts';
 
 /**
  * Test suite for TerminalService
