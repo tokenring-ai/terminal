@@ -8,7 +8,7 @@ The `@tokenring-ai/terminal` package provides a unified interface for executing 
 
 ### Key Features
 
-- **Shell command execution** with timeout support (default 120 seconds)
+- **Shell command execution** with timeout support (default 60 seconds)
 - **Command safety validation** (safe, unknown, dangerous categories)
 - **Compound command parsing** (&&, ||, ;, |)
 - **Configurable output truncation**
@@ -40,9 +40,9 @@ bun install @tokenring-ai/terminal
 
 ### Development Dependencies
 
-- `@vitest/coverage-v8` (^4.0.18) - Test coverage
-- `vitest` (^4.0.18) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `@vitest/coverage-v8` (^4.1.1) - Test coverage
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Core Components
 
@@ -240,6 +240,7 @@ interface ExecuteCommandOptions {
 type ExecuteCommandResult = {
   status: "success",
   output: string,
+  exitCode: 0,
 } | {
   status: "badExitCode",
   output: string,
@@ -294,6 +295,7 @@ Agent state slice for terminal-specific configuration and persistent sessions.
 **Properties:**
 
 - `providerName: string | null` - Active terminal provider name
+- `workingDirectory: string` - Current working directory for commands
 - `bash: { cropOutput: number, timeoutSeconds: number }` - Bash execution options
 - `interactiveConfig: { minInterval: number, settleInterval: number, maxInterval: number }` - Output collection intervals
 - `sessions: Map<string, SessionRecord>` - Active terminal sessions
@@ -349,15 +351,12 @@ Tool for executing shell commands through the agent interface.
 **Example Output:**
 
 ```
-[ls -la]
-Success: True
-Exit Code: 0
-
-Output:
+$ ls -la
 total 48
 drwxr-xr-x  5 user  staff   160 Jan 1 12:00 .
 drwxr-xr-x  3 user  staff    96 Jan 1 12:00 ..
 -rw-r--r--  1 user  staff  1024 Jan 1 12:00 file.txt
+[exit: 0 | 123ms]
 ```
 
 ### terminal_start
@@ -570,24 +569,16 @@ const config = {
 **Configuration Schema:**
 
 ```typescript
-const TerminalConfigSchema = z.object({
-  agentDefaults: z.object({
-    provider: z.string(),
-    bash: z.object({
-      cropOutput: z.number().default(10000),
-      timeoutSeconds: z.number().default(60),
-    }).prefault({}),
-    interactive: z.object({
-      minInterval: z.number().default(1),
-      settleInterval: z.number().default(2),
-      maxInterval: z.number().default(30),
-    }).prefault({}),
-  }),
-  providers: z.record(z.string(), z.any()),
-  safeCommands: z.array(z.string()).default([...]),
-  dangerousCommands: z.array(z.string()).default([...])
-}).strict();
+import { TerminalConfigSchema } from './schema.ts';
 ```
+
+The schema includes:
+- `agentDefaults`: Default configuration for all agents
+- `providers`: Terminal provider configurations
+- `safeCommands`: List of safe command patterns
+- `dangerousCommands`: List of dangerous command regex patterns
+
+See `schema.ts` for the complete schema definition.
 
 ### Agent Configuration
 
@@ -667,7 +658,7 @@ const terminal = new TerminalService(config);
 const result = await terminal.executeCommand(
   'npm',
   ['install'],
-  { timeoutSeconds: 120 },
+  { timeoutSeconds: 60 },
   agent
 );
 
@@ -859,14 +850,21 @@ The terminal package integrates with the Token Ring plugin system:
 import {AgentCommandService} from "@tokenring-ai/agent";
 import {TokenRingPlugin} from "@tokenring-ai/app";
 import {ChatService} from "@tokenring-ai/chat";
+import {z} from "zod";
 import commands from "./commands.ts";
+import packageJSON from "./package.json" with {type: "json"};
 import TerminalService from "./TerminalService.js";
+import {TerminalConfigSchema} from "./schema.ts";
 import tools from "./tools.ts";
 
+const packageConfigSchema = z.object({
+  terminal: TerminalConfigSchema.optional(),
+});
+
 export default {
-  name: "@tokenring-ai/terminal",
-  version: "0.2.0",
-  description: "Terminal and shell command execution service",
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
   install(app, config) {
     if (config.terminal) {
       app.addServices(new TerminalService(config.terminal));
@@ -879,7 +877,7 @@ export default {
     }
   },
   config: packageConfigSchema
-} satisfies TokenRingPlugin;
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ## Testing
@@ -928,6 +926,8 @@ pkg/terminal/
 ├── TerminalService.ts       # Core service implementation
 ├── TerminalProvider.ts      # Provider interface and types
 ├── schema.ts                # Configuration schemas
+├── commands.ts              # Agent command definitions
+├── tools.ts                 # Tool definitions
 ├── state/
 │   └── terminalState.ts     # State management for terminal sessions
 ├── tools/
@@ -966,14 +966,10 @@ The package may throw the following errors:
 - **Error**: General errors with descriptive messages
   - `"No terminal provider configured for agent"` - When no provider is set
   - `"Session {sessionId} not found"` - When accessing a non-existent session
-  - `"[toolName] {message}"` - Tool-specific errors
+  - `[toolName] {message}` - Tool-specific errors
 
 - **CommandFailedError**: Command execution failures
-  - `"Command cannot be empty"` - When starting a session without a command
-  - `"Usage: /terminal send <sessionId> <input>"` - Invalid send command syntax
-  - `"Usage: /terminal output <sessionId>"` - Missing session ID
-  - `"Usage: /terminal stop <sessionId>"` - Missing session ID
-  - `"Provider \"{name}\" not found."` - Invalid provider name
+  - `"Provider \"{name}\" not found."` - Invalid provider name when using `/terminal provider set`
 
 ### Error Handling Examples
 

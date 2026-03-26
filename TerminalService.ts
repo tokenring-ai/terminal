@@ -4,7 +4,7 @@ import {TokenRingService} from "@tokenring-ai/app/types";
 import deepMerge from "@tokenring-ai/utility/object/deepMerge";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
 import path from "node:path";
-import {setTimeout} from "timers/promises";
+import {setTimeout as delay} from "timers/promises";
 import {z} from "zod";
 import {TerminalAgentConfigSchema, TerminalConfigSchema} from "./schema.ts";
 import {TerminalState} from "./state/terminalState.js";
@@ -33,10 +33,9 @@ export default class TerminalService implements TokenRingService {
 
   attach(agent: Agent, creationContext: AgentCreationContext): void {
     const config = deepMerge(this.options.agentDefaults, agent.getAgentConfigSlice('terminal', TerminalAgentConfigSchema))
-    agent.initializeState(TerminalState, config);
+    const initialState = agent.initializeState(TerminalState, config);
 
-    const terminalProviderName = config.provider ?? this.defaultProvider;
-    const terminalProvider = this.terminalProviderRegistry.getItemByName(terminalProviderName);
+    const terminalProvider = initialState.providerName ? this.terminalProviderRegistry.getItemByName(initialState.providerName) : this.defaultProvider
     creationContext.items.push(`Terminal Provider: ${terminalProvider?.displayName ?? '(none)'}`);
   }
 
@@ -151,7 +150,7 @@ export default class TerminalService implements TokenRingService {
 
     agent.infoMessage(`Retrieving session output for ${sessionId} from position ${fromPosition}`)
 
-    await setTimeout(minInterval * 1000);
+    await delay(minInterval * 1000);
 
     const startTime = Date.now();
     let lastCheckTime = Date.now();
@@ -178,7 +177,7 @@ export default class TerminalService implements TokenRingService {
         }
       }
 
-      await setTimeout(100);
+      await delay(100);
     }
 
     const result = await provider.collectOutput(sessionId, fromPosition, {
