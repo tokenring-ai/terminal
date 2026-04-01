@@ -7,19 +7,19 @@ const name = "terminal_continue";
 const displayName = "Terminal/Continue";
 
 export async function execute(
-  { sessionId, stdin }: z.output<typeof inputSchema>,
+  { terminalName, stdin }: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
   const terminal = agent.requireServiceByType(TerminalService);
 
   if (stdin) {
-    await terminal.sendInputToSession(sessionId, stdin, agent);
+    await terminal.sendInputToSession(terminalName, stdin, agent);
   }
 
-  const result = await terminal.retrieveSessionOutput(sessionId, agent);
+  const result = await terminal.retrieveSessionOutput(terminalName, agent);
 
   return `
-Terminal Session: ${sessionId}
+Terminal Session: ${terminalName}
 
 Output:
 ${result.output}
@@ -29,11 +29,11 @@ ${result.output}
 const description = `Continue interaction with an EXISTING persistent terminal session.
 
 ALWAYS use this tool instead of terminal_start for any follow-up commands within the same task. 
-Pass the sessionId from the original terminal_start response. 
+Pass the terminalName from the original terminal_start response. 
 This ensures efficient use of resources and maintains session state across multiple commands.`;
 
 const inputSchema = z.object({
-  sessionId: z.string().describe("The terminal session ID"),
+  terminalName: z.string().describe("The terminal name"),
   stdin: z.string().optional().describe("Input to send to the terminal."),
 });
 

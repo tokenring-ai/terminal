@@ -2,6 +2,8 @@ import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent";
 import createTestingApp from "@tokenring-ai/app/test/createTestingApp";
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {z} from "zod";
+import createLocalRPCClient from "../../rpc/createLocalRPCClient.ts";
+import terminalRPC from "../rpc/terminal.ts";
 import {TerminalConfigSchema} from "../schema.ts";
 import {TerminalState} from "../state/terminalState.ts";
 import type {ExecuteCommandOptions} from '../TerminalProvider.ts';
@@ -34,9 +36,9 @@ describe('TerminalService', () => {
         timeoutSeconds: 60,
       },
       interactive: {
-        minInterval: 1,
-        settleInterval: 2,
-        maxInterval: 30,
+        minInterval: 0,
+        settleInterval: 0,
+        maxInterval: 0,
       },
     },
     providers: {
@@ -50,7 +52,7 @@ describe('TerminalService', () => {
 
   beforeEach(() => {
     app = createTestingApp();
-    terminalService = new TerminalService(TerminalConfigSchema.parse(testConfig));
+    terminalService = new TerminalService(TerminalConfigSchema.parse(testConfig), app);
     testProvider = new TestTerminalProvider();
     terminalService.registerTerminalProvider('test', testProvider);
     app.addServices(terminalService);
@@ -196,99 +198,164 @@ describe('TerminalService', () => {
 
   describe('Interactive Session Management', () => {
     it('should start interactive session', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      
-      expect(sessionId).toBeDefined();
-      expect(sessionId).toMatch(/session-\d+/);
-      
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+
+      expect(terminalName).toBeDefined();
+      expect(terminalName).not.toMatch(/session-\d+/);
+
       const state = agent.getState(TerminalState);
-      const session = state.getSession(sessionId);
-      expect(session).toBeDefined();
-      expect(session?.command).toBe('test-command');
-      expect(session?.running).toBe(true);
+      expect(state.listConnectedTerminalNames()).toContain(terminalName);
+
+      const terminals = terminalService.listTerminals(agent);
+      expect(terminals).toHaveLength(1);
+      expect(terminals[0]?.name).toBe(terminalName);
+      expect(terminals[0]?.command).toBe('test-command');
+      expect(terminals[0]?.running).toBe(true);
     });
 
     it('should send input to session', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      await terminalService.sendInputToSession(sessionId, 'user input', agent);
-      
-      const status = testProvider.getSessionStatus(sessionId);
-      expect(status).toBeDefined();
-      expect(status?.outputLength).toBeGreaterThan(0);
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+      await terminalService.sendInputToSession(terminalName, 'user input', agent);
+
+      const output = await terminalService.getCompleteSessionOutput(terminalName, agent);
+      expect(output).toContain('test-command');
+      expect(output).toContain('user input');
     });
 
     it('should collect session output', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      await terminalService.sendInputToSession(sessionId, 'input1', agent);
-      
-      const result = await terminalService.retrieveSessionOutput(sessionId, agent);
-      
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+      await terminalService.sendInputToSession(terminalName, 'input1', agent);
+
+      const result = await terminalService.retrieveSessionOutput(terminalName, agent);
+
       expect(result).toBeDefined();
-      expect(result.output).toBeDefined();
+      expect(result.output).toContain('test-command');
+      expect(result.output).toContain('input1');
       expect(result.position).toBeDefined();
       expect(result.complete).toBeDefined();
     });
 
     it('should terminate session', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      await terminalService.terminateSession(sessionId, agent);
-      
-      const status = testProvider.getSessionStatus(sessionId);
-      expect(status?.running).toBe(false);
-      
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+      await terminalService.terminateSession(terminalName, agent);
+
       const state = agent.getState(TerminalState);
-      const session = state.getSession(sessionId);
-      expect(session).toBeUndefined();
+      expect(state.listConnectedTerminalNames()).not.toContain(terminalName);
+      expect(terminalService.listTerminals()).toHaveLength(0);
     });
 
     it('should throw error for non-existent session', async () => {
       await expect(terminalService.sendInputToSession('non-existent', 'input', agent))
-        .rejects.toThrow('Session non-existent not found');
+        .rejects.toThrow('Terminal non-existent not found');
     });
 
     it('should get complete session output', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      await terminalService.sendInputToSession(sessionId, 'input1', agent);
-      
-      const output = await terminalService.getCompleteSessionOutput(sessionId, agent);
-      
-      expect(output).toBeDefined();
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+      await terminalService.sendInputToSession(terminalName, 'input1', agent);
+
+      const output = await terminalService.getCompleteSessionOutput(terminalName, agent);
+
+      expect(output).toContain('test-command');
+      expect(output).toContain('input1');
     });
   });
 
   describe('State Management', () => {
     it('should register session in state', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
       const state = agent.getState(TerminalState);
-      
-      expect(state.sessions.size).toBeGreaterThan(0);
-      expect(state.getSession(sessionId)).toBeDefined();
+
+      expect(state.listConnectedTerminalNames()).toContain(terminalName);
     });
 
     it('should update session position', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      await terminalService.sendInputToSession(sessionId, 'input', agent);
-      
-      // The retrieveSessionOutput should update the position
-      await terminalService.retrieveSessionOutput(sessionId, agent);
-      
-      const state = agent.getState(TerminalState);
-      const session = state.getSession(sessionId);
-      expect(session?.lastPosition).toBeGreaterThan(0);
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+      await terminalService.sendInputToSession(terminalName, 'input', agent);
+
+      await terminalService.retrieveSessionOutput(terminalName, agent);
+
+      const terminal = terminalService.listTerminals(agent).find(item => item.name === terminalName);
+      expect(terminal?.lastPosition).toBeGreaterThan(0);
     });
 
     it('should remove session on termination', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      await terminalService.terminateSession(sessionId, agent);
-      
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+      await terminalService.terminateSession(terminalName, agent);
+
       const state = agent.getState(TerminalState);
-      expect(state.getSession(sessionId)).toBeUndefined();
+      expect(state.listConnectedTerminalNames()).not.toContain(terminalName);
     });
 
     it('should list sessions', () => {
-      const state = agent.getState(TerminalState);
-      const sessions = state.listSessions();
-      expect(Array.isArray(sessions)).toBe(true);
+      const terminals = terminalService.listTerminals(agent);
+      expect(Array.isArray(terminals)).toBe(true);
+    });
+  });
+
+  describe('Registry And RPC Management', () => {
+    it('should allow detached terminals to be attached to agents later', async () => {
+      const terminalName = await terminalService.spawnTerminal({
+        command: 'detached-command',
+        connectToAgent: false,
+      });
+
+      expect(agent.getState(TerminalState).listConnectedTerminalNames()).not.toContain(terminalName);
+      expect(terminalService.listTerminals()).toHaveLength(1);
+
+      terminalService.attachTerminalToAgent(terminalName, agent);
+
+      expect(agent.getState(TerminalState).listConnectedTerminalNames()).toContain(terminalName);
+
+      await terminalService.sendInputToSession(terminalName, 'attached-input', agent);
+      const output = await terminalService.getCompleteSessionOutput(terminalName, agent);
+      expect(output).toContain('detached-command');
+      expect(output).toContain('attached-input');
+    });
+
+    it('should support rpc spawning, attaching, and interacting without an initial agent id', async () => {
+      const rpc = createLocalRPCClient(terminalRPC, app);
+
+      const {terminalName} = await rpc.spawnTerminal({
+        command: 'rpc-command',
+      });
+
+      expect(terminalName).toBeDefined();
+      expect(agent.getState(TerminalState).listConnectedTerminalNames()).toHaveLength(0);
+
+      const allTerminals = await rpc.listTerminals({});
+      expect(allTerminals.terminals.map(item => item.name)).toContain(terminalName);
+
+      await rpc.sendInput({
+        terminalName,
+        input: 'rpc-input',
+      });
+
+      const incremental = await rpc.retrieveOutput({
+        terminalName,
+        fromPosition: 0,
+        minInterval: 0,
+        settleInterval: 0,
+        maxInterval: 0,
+      });
+      expect(incremental.output).toContain('rpc-command');
+      expect(incremental.output).toContain('rpc-input');
+
+      await rpc.attachTerminal({
+        agentId: agent.id,
+        terminalName,
+      });
+
+      expect(agent.getState(TerminalState).listConnectedTerminalNames()).toContain(terminalName);
+
+      const agentTerminals = await rpc.listTerminals({agentId: agent.id});
+      expect(agentTerminals.terminals.map(item => item.name)).toContain(terminalName);
+
+      const fullOutput = await rpc.getCompleteOutput({terminalName});
+      expect(fullOutput.output).toContain('rpc-input');
+
+      await rpc.terminateTerminal({terminalName});
+      expect(agent.getState(TerminalState).listConnectedTerminalNames()).not.toContain(terminalName);
+      expect(terminalService.listTerminals()).toHaveLength(0);
     });
   });
 
@@ -381,8 +448,8 @@ describe('TerminalService', () => {
     });
 
     it('should handle long session id', async () => {
-      const sessionId = await terminalService.startInteractiveSession(agent, 'test-command');
-      expect(sessionId.length).toBeGreaterThan(0);
+      const terminalName = await terminalService.startInteractiveSession(agent, 'test-command');
+      expect(terminalName.length).toBeGreaterThan(0);
     });
   });
 });

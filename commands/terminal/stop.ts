@@ -3,7 +3,7 @@ import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [{name: "sessionId", description: "Session ID", required: true}]
+  positionals: [{name: "terminalName", description: "Terminal name", required: true}]
 } as const satisfies AgentCommandInputSchema;
 
 export default {
@@ -15,8 +15,8 @@ export default {
 
 /terminal stop term-1`,
   inputSchema,
-  execute: async ({positionals: {sessionId}, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    await agent.requireServiceByType(TerminalService).terminateSession(sessionId, agent);
-    return `Terminal session ${sessionId} terminated.`;
+  execute: async ({positionals: {terminalName}, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
+    await agent.requireServiceByType(TerminalService).terminateSession(terminalName, agent);
+    return `Terminal ${terminalName} terminated.`;
   },
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

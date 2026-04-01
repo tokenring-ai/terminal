@@ -7,14 +7,14 @@ const name = "terminal_stop";
 const displayName = "Terminal/Stop";
 
 export async function execute(
-  { sessionId }: z.output<typeof inputSchema>,
+  { terminalName }: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
   const terminal = agent.requireServiceByType(TerminalService);
 
   try {
-    await terminal.terminateSession(sessionId, agent);
-    return `Terminal session ${sessionId} terminated.`;
+    await terminal.terminateSession(terminalName, agent);
+    return `Terminal ${terminalName} terminated.`;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`[${name}] ${message}`);
@@ -24,7 +24,7 @@ export async function execute(
 const description = "Terminate a persistent terminal session.";
 
 const inputSchema = z.object({
-  sessionId: z.string().describe("The terminal session ID to terminate"),
+  terminalName: z.string().describe("The terminal name to terminate"),
 });
 
 export default {

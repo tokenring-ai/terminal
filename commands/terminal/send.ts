@@ -4,14 +4,14 @@ import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [{name: "sessionId", description: "Session ID", required: true}],
+  positionals: [{name: "terminalName", description: "Terminal name", required: true}],
   remainder: {name: "input", description: "Input to send", required: true}
 } as const satisfies AgentCommandInputSchema;
 
-async function execute({positionals: {sessionId}, remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+async function execute({positionals: {terminalName}, remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
-  await terminal.sendInputToSession(sessionId, remainder, agent);
-  const result = await terminal.retrieveSessionOutput(sessionId, agent);
+  await terminal.sendInputToSession(terminalName, remainder, agent);
+  const result = await terminal.retrieveSessionOutput(terminalName, agent);
   return codeBlock(result.output);
 }
 

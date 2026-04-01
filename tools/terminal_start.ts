@@ -28,12 +28,12 @@ export async function execute(
     if (!confirmed) throw new Error("User did not approve command execution");
   }
 
-  const sessionId = await terminal.startInteractiveSession(agent, command);
+  const terminalName = await terminal.startInteractiveSession(agent, command);
 
-  const cmdResult = await terminal.retrieveSessionOutput(sessionId, agent);
+  const cmdResult = await terminal.retrieveSessionOutput(terminalName, agent);
   return `
 Terminal Session Started
-Terminal Id: ${sessionId}
+Terminal Name: ${terminalName}
 Sent Command: ${command}
 
 Output:
@@ -44,7 +44,7 @@ ${cmdResult.output}
 const description = `Start a NEW interactive terminal session in a PTY and executes an initial command. Leaves the terminal running for execution of follow up commands.
 
 IMPORTANT: Only use this for the FIRST command in a new task or when you need to start fresh, or when you intentionally want to leave an existing terminal running.
-Always try to reuse existing terminal sessions (by using terminal_continue with the provided sessionId) for subsequent commands within the same task. 
+Always try to reuse existing terminal sessions (by using terminal_continue with the provided terminalName) for subsequent commands within the same task. 
 Do not create multiple terminal sessions for a single task unless explicitly necessary.`;
 
 const inputSchema = z.object({

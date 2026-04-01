@@ -9,9 +9,9 @@ const inputSchema = {
 
 async function execute({remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
-  const sessionId = await terminal.startInteractiveSession(agent, remainder);
-  const result = await terminal.retrieveSessionOutput(sessionId, agent);
-  return `\n***Terminal session started***\n- Terminal Session Id: ${sessionId}\n\n${codeBlock(result.output)}\n`.trim();
+  const terminalName = await terminal.startInteractiveSession(agent, remainder);
+  const result = await terminal.retrieveSessionOutput(terminalName, agent);
+  return `\n***Terminal session started***\n- Terminal Name: ${terminalName}\n\n${codeBlock(result.output)}\n`.trim();
 }
 
 export default {
