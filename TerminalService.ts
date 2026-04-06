@@ -9,7 +9,7 @@ import {generateHumanId} from "@tokenring-ai/utility/string/generateHumanId";
 import path from "node:path";
 import {setTimeout as delay} from "timers/promises";
 import {z} from "zod";
-import {TerminalAgentConfigSchema, TerminalConfigSchema} from "./schema.ts";
+import {TerminalAgentConfigSchema, TerminalConfigSchema, type TerminalSessionSummary} from "./schema.ts";
 import {TerminalState} from "./state/terminalState.ts";
 import {type ExecuteCommandOptions, type ExecuteCommandResult, type TerminalProvider} from "./TerminalProvider.ts";
 
@@ -19,30 +19,16 @@ type TerminalConnection = {
 
 type TerminalSessionRecord = {
   name: string;
+  lastInput?: string;
   providerName: string;
   providerSessionId: string;
-  command: string;
   workingDirectory: string;
   startTime: number;
   connectedAgents: Map<string, TerminalConnection>;
 };
 
-export type TerminalSessionSummary = {
-  name: string;
-  command: string;
-  providerName: string;
-  workingDirectory: string;
-  startTime: number;
-  running: boolean;
-  outputLength: number;
-  exitCode?: number;
-  connectedAgentIds: string[];
-  lastPosition?: number;
-};
-
 type SpawnTerminalOptions = {
   agent?: Agent;
-  command: string;
   providerName?: string;
   workingDirectory?: string;
   connectToAgent?: boolean;
@@ -255,14 +241,14 @@ export default class TerminalService implements TokenRingService {
     const status = provider.getSessionStatus(terminal.providerSessionId);
     const summary: TerminalSessionSummary = {
       name: terminal.name,
-      command: terminal.command,
       providerName: terminal.providerName,
       workingDirectory: terminal.workingDirectory,
       startTime: status?.startTime ?? terminal.startTime,
       running: status?.running ?? false,
       outputLength: status?.outputLength ?? 0,
-      exitCode: status?.exitCode,
+      exitCode: status?.exitCode ?? null,
       connectedAgentIds: Array.from(terminal.connectedAgents.keys()),
+      lastInput: terminal.lastInput,
     };
 
     if (agent) {
@@ -295,7 +281,6 @@ export default class TerminalService implements TokenRingService {
 
   async spawnTerminal({
     agent,
-    command,
     providerName,
     workingDirectory,
     connectToAgent = Boolean(agent),
@@ -312,7 +297,6 @@ export default class TerminalService implements TokenRingService {
       name: terminalName,
       providerName: resolvedProviderName,
       providerSessionId,
-      command,
       workingDirectory: executeOptions.workingDirectory,
       startTime: Date.now(),
       connectedAgents: new Map(),
@@ -324,13 +308,13 @@ export default class TerminalService implements TokenRingService {
       this.connectAgentToTerminalRecord(terminal, agent, 0);
     }
 
-    await provider.sendInput(providerSessionId, command);
     return terminalName;
   }
 
   async sendInputToTerminal(terminalName: string, input: string): Promise<void> {
     const terminal = this.requireTerminalRecord(terminalName);
     const provider = this.requireTerminalProviderByName(terminal.providerName);
+    terminal.lastInput = input;
     await provider.sendInput(terminal.providerSessionId, input);
   }
 
@@ -427,7 +411,9 @@ export default class TerminalService implements TokenRingService {
     agent: Agent,
     command: string
   ): Promise<string> {
-    return this.spawnTerminal({agent, command, connectToAgent: true});
+    const terminalName = await this.spawnTerminal({agent, connectToAgent: true});
+    await this.sendInputToSession(terminalName, command, agent)
+    return terminalName;
   }
 
   async sendInputToSession(

@@ -1,7 +1,7 @@
 {
   "name": "@tokenring-ai/terminal",
   "version": "0.2.0",
-  "description": "Terminal and shell command execution service for Token Ring",
+  "description": "Service for managing interactive shell sessions and executing system commands.",
   "dependencies": {
     "@tokenring-ai/agent": "0.2.0",
     "@tokenring-ai/app": "0.2.0",

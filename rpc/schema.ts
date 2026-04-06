@@ -1,18 +1,6 @@
-import {RPCSchema} from "../../rpc/types.ts";
 import {z} from "zod";
-
-const terminalSummarySchema = z.object({
-  name: z.string(),
-  command: z.string(),
-  providerName: z.string(),
-  workingDirectory: z.string(),
-  startTime: z.number(),
-  running: z.boolean(),
-  outputLength: z.number(),
-  exitCode: z.number().nullable(),
-  connectedAgentIds: z.array(z.string()),
-  lastPosition: z.number().optional(),
-});
+import {RPCSchema} from "../../rpc/types.ts";
+import {TerminalSessionSummarySchema} from "../schema.ts";
 
 export default {
   name: "Terminal RPC",
@@ -24,13 +12,12 @@ export default {
         agentId: z.string().optional(),
       }),
       result: z.object({
-        terminals: z.array(terminalSummarySchema),
+        terminals: z.array(TerminalSessionSummarySchema),
       }),
     },
     spawnTerminal: {
       type: "mutation",
       input: z.object({
-        command: z.string(),
         agentId: z.string().optional(),
         providerName: z.string().optional(),
         workingDirectory: z.string().optional(),

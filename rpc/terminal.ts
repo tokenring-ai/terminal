@@ -27,7 +27,6 @@ export default createRPCEndpoint(TerminalRpcSchema, {
     const agent = args.agentId ? requireAgent(app, args.agentId) : undefined;
     const terminalName = await terminal.spawnTerminal({
       agent,
-      command: args.command,
       providerName: args.providerName,
       workingDirectory: args.workingDirectory,
       connectToAgent: args.connectToAgent,

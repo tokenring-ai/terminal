@@ -28,7 +28,6 @@ export const TerminalConfigSchema = z.object({
       maxInterval: z.number().default(30),
     }).prefault({}),
   }),
-  providers: z.record(z.string(), z.any()),
   safeCommands: z.array(z.string()).default([
     "awk", "sed", "cat", "cd", "chdir", "diff", "echo", "find", "git", "grep", "head", "help", "hostname", "id", "ipconfig", "tee",
     "ls", "netstat", "ps", "pwd", "sort", "tail", "tree", "type", "uname", "uniq", "wc", "which", "touch", "mkdir",
@@ -51,3 +50,19 @@ export const TerminalConfigSchema = z.object({
     "git.*reset", // i.e. git reset
   ])
 }).strict();
+
+export const TerminalSessionSummarySchema = z.object({
+  name: z.string(),
+  lastInput: z.string().optional(),
+  providerName: z.string(),
+  workingDirectory: z.string(),
+  startTime: z.number(),
+  running: z.boolean(),
+  outputLength: z.number(),
+  exitCode: z.number().nullable(),
+  connectedAgentIds: z.array(z.string()),
+  lastPosition: z.number().optional(),
+});
+
+export type TerminalSessionSummary = z.input<typeof TerminalSessionSummarySchema>;
+export type ParsedTerminalSessionSummary = z.output<typeof TerminalSessionSummarySchema>;

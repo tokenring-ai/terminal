@@ -1,5 +1,6 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
+import markdownTable from "@tokenring-ai/utility/string/markdownTable";
 import {z} from "zod";
 import TerminalService from "../TerminalService.ts";
 
@@ -10,23 +11,22 @@ export async function execute(
   _: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
-  const sessions = agent.requireServiceByType(TerminalService).listTerminals(agent);
+  const terminals = agent.requireServiceByType(TerminalService).listTerminals(agent);
 
-  if (sessions.length === 0) {
+  if (terminals.length === 0) {
     return "No connected terminals.";
   }
-
-  const rows = sessions.map(s => {
-    const uptime = Math.floor((Date.now() - s.startTime) / 1000);
-    return `${s.name.padEnd(24)} | ${s.command.substring(0, 30).padEnd(30)} | ${String(s.lastPosition ?? 0).padEnd(8)} | ${s.running ? 'Yes' : 'No'}`.padEnd(8) + ` | ${uptime}s`;
-  });
-
-  return `
-Connected Terminals:
-Name                     | Command                        | Position | Running | Uptime
--------------------------|--------------------------------|----------|---------|--------
-${rows.join('\n')}
-`.trim();
+  return "Connected Terminals:\n" +
+    markdownTable(['Name', 'Last Input', 'Position', 'Running', 'Uptime'], terminals.map(terminal => {
+      const uptime = Math.floor((Date.now() - terminal.startTime) / 1000);
+      return [
+        terminal.name.padEnd(24),
+        (terminal.lastInput ?? "[No Input]").substring(0, 30).padEnd(30),
+        String(terminal.lastPosition ?? 0).padEnd(8),
+        (terminal.running ? 'Yes' : 'No').padEnd(8),
+        `${uptime}s`,
+      ];
+    }));
 }
 
 const description = "List all active persistent terminal sessions.";
