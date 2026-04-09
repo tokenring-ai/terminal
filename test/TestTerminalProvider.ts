@@ -1,11 +1,11 @@
 import type {
-  TerminalProvider,
-  TerminalIsolationLevel,
   ExecuteCommandOptions,
   ExecuteCommandResult,
-  OutputWaitOptions,
   InteractiveTerminalOutput,
+  OutputWaitOptions,
   SessionStatus,
+  TerminalIsolationLevel,
+  TerminalProvider,
 } from '../TerminalProvider.js';
 
 /**

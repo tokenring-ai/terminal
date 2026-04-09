@@ -6,8 +6,8 @@ import {RpcService} from "../rpc/index.ts";
 import commands from "./commands.ts";
 import packageJSON from "./package.json" with {type: "json"};
 import terminalRPC from "./rpc/terminal.ts";
-import TerminalService from "./TerminalService.ts";
 import {TerminalConfigSchema} from "./schema.ts";
+import TerminalService from "./TerminalService.ts";
 import tools from "./tools.ts";
 
 const packageConfigSchema = z.object({

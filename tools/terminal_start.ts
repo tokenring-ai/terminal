@@ -1,7 +1,6 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
 import {z} from "zod";
-import {TerminalState} from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_start";
