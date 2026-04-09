@@ -9,7 +9,7 @@ const inputSchema = {
 
 async function execute({positionals: { providerName }, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   try {
-    agent.requireServiceByType(TerminalService).setActiveTerminal(providerName, agent);
+    agent.requireServiceByType(TerminalService).setActiveProvider(providerName, agent);
     return `Active provider set to: ${providerName}`;
   } catch {
     throw new CommandFailedError(`Provider "${providerName}" not found.`);

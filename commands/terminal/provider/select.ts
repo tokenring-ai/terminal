@@ -10,7 +10,7 @@ async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Prom
   const available = terminal.getAvailableProviders();
   if (available.length === 0) return "No terminal providers are registered.";
   if (available.length === 1) {
-    terminal.setActiveTerminal(available[0], agent);
+    terminal.setActiveProvider(available[0], agent);
     return `Only one provider configured, auto-selecting: ${available[0]}`;
   }
   const activeProvider = agent.getState(TerminalState).providerName;
@@ -20,7 +20,7 @@ async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Prom
     question: { type: 'treeSelect', label: "Terminal Provider Selection", key: "result", defaultValue: activeProvider ? [activeProvider] : undefined, minimumSelections: 1, maximumSelections: 1, tree },
   });
   if (selection) {
-    terminal.setActiveTerminal(selection[0], agent);
+    terminal.setActiveProvider(selection[0], agent);
     return `Active provider set to: ${selection[0]}`;
   }
   return "Provider selection cancelled.";

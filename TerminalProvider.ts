@@ -1,7 +1,14 @@
+export type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
+
 export interface ExecuteCommandOptions {
   timeoutSeconds: number;
-  env?: Record<string, string | undefined>;
   workingDirectory: string;
+  isolation: TerminalIsolationLevel;
+}
+
+export interface InteractiveTerminalOptions {
+  workingDirectory: string;
+  isolation: TerminalIsolationLevel;
 }
 
 export type ExecuteCommandResult = {
@@ -40,10 +47,9 @@ export interface SessionStatus {
   exitCode?: number;
 }
 
-export type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
-
-export interface TerminalProvider {
+export interface BaseTerminalProvider {
   displayName: string;
+  supportedIsolationLevels: TerminalIsolationLevel[];
 
   executeCommand(
     command: string,
@@ -54,9 +60,17 @@ export interface TerminalProvider {
   runScript(
     script: string,
     options: ExecuteCommandOptions,
-  ) : Promise<ExecuteCommandResult>;
+  ): Promise<ExecuteCommandResult>;
+}
 
-  startInteractiveSession(options: ExecuteCommandOptions): Promise<string>;
+export interface NonInteractiveTerminalProvider extends BaseTerminalProvider {
+  isInteractive: false;
+}
+
+export interface InteractiveTerminalProvider extends BaseTerminalProvider {
+  isInteractive: true;
+
+  startInteractiveSession(options: InteractiveTerminalOptions): Promise<string>;
 
   sendInput(sessionId: string, input: string): Promise<void>;
 
@@ -69,6 +83,6 @@ export interface TerminalProvider {
   terminateSession(sessionId: string): Promise<void>;
 
   getSessionStatus(sessionId: string): SessionStatus | null;
-
-  getIsolationLevel() : TerminalIsolationLevel;
 }
+
+export type TerminalProvider = NonInteractiveTerminalProvider | InteractiveTerminalProvider;

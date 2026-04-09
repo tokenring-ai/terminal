@@ -5,12 +5,13 @@ import {z} from "zod";
 import {TerminalState} from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
 
-const name = "terminal_bash";
-const displayName = "Terminal/bash";
+const name = "shell_bash";
+const displayName = "Shell/bash";
 
 export async function execute(
   {
     command,
+    dangerouslyDisableSandbox
   }: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
@@ -30,25 +31,41 @@ export async function execute(
 
   agent.infoMessage(`Running ${cmdString}`);
 
-  const commandSafetyLevel = terminal.getCommandSafetyLevel(cmdString);
-  if (commandSafetyLevel === "unknown") {
+  if (dangerouslyDisableSandbox) {
     const confirmed = await agent.askForApproval({
-      message: `Execute potentially unsafe command: ${cmdString}?`,
+      message: `Execute potentially dangerous command outside of the sandbox: ${cmdString}?`,
       default: true,
       timeout: 10,
-    });
-    if (!confirmed) throw new Error("User did not approve command execution");
-  } else if (commandSafetyLevel === "dangerous") {
-    const confirmed = await agent.askForApproval({
-      message: `Execute potentially dangerous command: ${cmdString}?`,
     })
+
     if (!confirmed) throw new Error("User did not approve command execution");
+  } else {
+    const commandSafetyLevel = terminal.getCommandSafetyLevel(cmdString);
+    if (commandSafetyLevel === "unknown") {
+      const confirmed = await agent.askForApproval({
+        message: `Execute potentially unsafe command: ${cmdString}?`,
+        default: true,
+        timeout: 10,
+      });
+      if (!confirmed) throw new Error("User did not approve command execution");
+    } else if (commandSafetyLevel === "dangerous") {
+      const confirmed = await agent.askForApproval({
+        message: `Execute potentially dangerous command: ${cmdString}?`,
+      })
+      if (!confirmed) throw new Error("User did not approve command execution");
+    }
   }
 
+  const activeTerminalProvider = terminal.requireActiveProvider(agent);
+  const workingDirectory = terminal.getWorkingDirectory(agent);
+
   const startTime = Date.now();
-  const result = await terminal.runScript(command, {
+
+  const result = await activeTerminalProvider.runScript(command, {
     timeoutSeconds: bashOptions.timeoutSeconds,
-  }, agent);
+    isolation: dangerouslyDisableSandbox ? 'none' : 'sandbox',
+    workingDirectory,
+  });
 
   const runTime = Math.floor(Date.now() - startTime);
 
@@ -84,10 +101,11 @@ export async function execute(
   };
 }
 
-const description = "Run a shell command. Output is truncated to reasonable size. WARNING: Use with caution. Not sandboxed!";
+const description = "Runs a shell command in a sandbox. Output is truncated to reasonable size.";
 
 const inputSchema = z.object({
   command: z.string().describe("The shell command to execute."),
+  dangerouslyDisableSandbox: z.boolean().default(false).describe("Disables the sandbox, which can be dangerous. Prompts the user for permission before executing the command.")
 });
 
 export default {

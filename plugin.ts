@@ -21,7 +21,7 @@ export default {
   description: packageJSON.description,
   install(app, config) {
     if (config.terminal) {
-      app.addServices(new TerminalService(config.terminal, app));
+      app.addServices(new TerminalService(config.terminal));
       app.waitForService(ChatService, chatService => {
         chatService.addTools(tools);
       });

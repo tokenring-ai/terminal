@@ -14,19 +14,18 @@ export default {
 /terminal list`,
   inputSchema,
   execute: async ({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    const terminals = agent.requireServiceByType(TerminalService).listTerminals(agent);
-    if (terminals.length === 0) return "No connected terminals.";
+    const terminalService = agent.requireServiceByType(TerminalService);
 
-    return "Connected Terminals:\n" +
-      markdownTable(['Name', 'Last Input', 'Position', 'Running', 'Uptime'], terminals.map(terminal => {
-        const uptime = Math.floor((Date.now() - terminal.startTime) / 1000);
-        return [
-          terminal.name.padEnd(24),
-          (terminal.lastInput ?? "[No Input]").substring(0, 30).padEnd(30),
-          String(terminal.lastPosition ?? 0).padEnd(8),
-          (terminal.running ? 'Yes' : 'No').padEnd(8),
-          `${uptime}s`,
-        ];
-      }));
+    return "Attached Terminals:\n" +
+      markdownTable(['Name', 'Last Input', 'Uptime', 'Attached Agents'],
+        terminalService.getAllTerminalSessions().map(([terminalName, terminalSession]) => {
+          const uptime = Math.floor((Date.now() - terminalSession.startTime) / 1000);
+          return [
+            terminalName,
+            (terminalSession?.lastInput ?? "[No Input]").substring(0, 30),
+            `${uptime}s`,
+            Array.from(terminalSession.connectedAgents.keys()).join(', '),
+          ];
+        }));
   },
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

@@ -8,6 +8,7 @@ export const TerminalAgentConfigSchema = z.object({
     timeoutSeconds: z.number().optional(),
   }).optional(),
   interactive: z.object({
+    cropOutput: z.number().optional(),
     minInterval: z.number().optional(),
     settleInterval: z.number().optional(),
     maxInterval: z.number().optional(),
@@ -23,6 +24,7 @@ export const TerminalConfigSchema = z.object({
       timeoutSeconds: z.number().default(60),
     }).prefault({}),
     interactive: z.object({
+      cropOutput: z.number().default(10000),
       minInterval: z.number().default(1),
       settleInterval: z.number().default(2),
       maxInterval: z.number().default(30),

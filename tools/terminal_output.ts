@@ -10,8 +10,9 @@ export async function execute(
   { terminalName }: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
-  const terminal = agent.requireServiceByType(TerminalService);
-  const completeOutput = await terminal.getCompleteSessionOutput(terminalName, agent);
+  const terminalService = agent.requireServiceByType(TerminalService);
+
+  const completeOutput = await terminalService.readFullOutput(terminalName);
 
   return `
 Terminal Session: ${terminalName}

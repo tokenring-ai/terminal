@@ -1,7 +1,5 @@
-import {AgentManager} from "@tokenring-ai/agent";
 import Agent from "@tokenring-ai/agent/Agent";
 import type {AgentCreationContext} from "@tokenring-ai/agent/types";
-import TokenRingApp from "@tokenring-ai/app";
 import {TokenRingService} from "@tokenring-ai/app/types";
 import deepMerge from "@tokenring-ai/utility/object/deepMerge";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
@@ -9,9 +7,9 @@ import {generateHumanId} from "@tokenring-ai/utility/string/generateHumanId";
 import path from "node:path";
 import {setTimeout as delay} from "timers/promises";
 import {z} from "zod";
-import {TerminalAgentConfigSchema, TerminalConfigSchema, type TerminalSessionSummary} from "./schema.ts";
+import {TerminalAgentConfigSchema, TerminalConfigSchema} from "./schema.ts";
 import {TerminalState} from "./state/terminalState.ts";
-import {type ExecuteCommandOptions, type ExecuteCommandResult, type TerminalProvider} from "./TerminalProvider.ts";
+import {type ExecuteCommandOptions, type ExecuteCommandResult, type TerminalIsolationLevel, type TerminalProvider} from "./TerminalProvider.ts";
 
 type TerminalConnection = {
   lastPosition: number;
@@ -28,10 +26,10 @@ type TerminalSessionRecord = {
 };
 
 type SpawnTerminalOptions = {
-  agent?: Agent;
-  providerName?: string;
-  workingDirectory?: string;
-  connectToAgent?: boolean;
+  providerName: string;
+  workingDirectory: string;
+  isolation: TerminalIsolationLevel;
+  attachToAgent?: Agent;
 };
 
 type RetrieveTerminalOutputOptions = {
@@ -49,15 +47,18 @@ export default class TerminalService implements TokenRingService {
   protected dangerousCommands: RegExp[];
 
   private terminalProviderRegistry = new KeyedRegistry<TerminalProvider>();
-  private terminalSessionRegistry = new KeyedRegistry<TerminalSessionRecord>();
 
   registerTerminalProvider = this.terminalProviderRegistry.register;
-  requireTerminalProviderByName = this.terminalProviderRegistry.requireItemByName;
+  unregisterTerminalProvider = this.terminalProviderRegistry.unregister;
+  requireProviderByName = this.terminalProviderRegistry.requireItemByName;
   getAvailableProviders = this.terminalProviderRegistry.getAllItemNames;
+
+  private terminalSessionRegistry = new KeyedRegistry<TerminalSessionRecord>();
+  getTerminalSessionByName = this.terminalSessionRegistry.getItemByName;
+  getAllTerminalSessions = this.terminalSessionRegistry.entries;
 
   constructor(
     private options: z.output<typeof TerminalConfigSchema>,
-    private app?: TokenRingApp,
   ) {
     this.dangerousCommands = options.dangerousCommands.map(command => new RegExp(command, "is"));
   }
@@ -70,260 +71,122 @@ export default class TerminalService implements TokenRingService {
     const config = deepMerge(this.options.agentDefaults, agent.getAgentConfigSlice('terminal', TerminalAgentConfigSchema));
     const initialState = agent.initializeState(TerminalState, config);
 
-    const connectedTerminalNames = initialState
-      .listConnectedTerminalNames()
-      .filter(terminalName => this.terminalSessionRegistry.getItemByName(terminalName));
-
-    if (connectedTerminalNames.length !== initialState.listConnectedTerminalNames().length) {
-      agent.mutateState(TerminalState, (state: TerminalState) => {
-        state.setConnectedTerminals(connectedTerminalNames);
-      });
-    }
-
-    for (const terminalName of connectedTerminalNames) {
-      this.connectAgentToTerminalRecord(this.requireTerminalRecord(terminalName), agent, 0);
-    }
-
     const providerName = initialState.providerName ?? this.options.agentDefaults.provider;
     const terminalProvider = this.terminalProviderRegistry.getItemByName(providerName);
     creationContext.items.push(`Terminal Provider: ${terminalProvider?.displayName ?? '(none)'}`);
   }
 
-  detach(agent: Agent): void {
-    for (const terminalName of agent.getState(TerminalState).listConnectedTerminalNames()) {
-      this.disconnectTerminalFromAgent(terminalName, agent);
+  async detach(agent: Agent): Promise<void> {
+    for (const [terminalName, terminalSession] of this.terminalSessionRegistry.entries()) {
+      if (terminalSession.connectedAgents.has(agent.id)) {
+        terminalSession.connectedAgents.delete(agent.id);
+      }
+      if (terminalSession.connectedAgents.size === 0) {
+        await this.closeSession(terminalName);
+      }
     }
   }
 
-  requireActiveTerminal(agent: Agent): TerminalProvider {
-    const { providerName } = agent.getState(TerminalState);
+  requireActiveProviderName(agent: Agent): string {
+    const {providerName} = agent.getState(TerminalState);
     if (!providerName) throw new Error("No terminal provider configured for agent");
-    return this.terminalProviderRegistry.requireItemByName(providerName);
+    return providerName;
   }
 
-  setActiveTerminal(providerName: string, agent: Agent): void {
+  requireActiveProvider(agent: Agent): TerminalProvider {
+    return this.terminalProviderRegistry.requireItemByName(this.requireActiveProviderName(agent));
+  }
+
+  setActiveProvider(providerName: string, agent: Agent): void {
     const newProvider = this.terminalProviderRegistry.requireItemByName(providerName);
     agent.mutateState(TerminalState, (state: TerminalState) => {
       state.providerName = providerName;
     });
-    agent.infoMessage(`Terminal provider changed to ${providerName} (isolation: ${newProvider.getIsolationLevel()})`);
+    agent.infoMessage(`Terminal provider changed to ${newProvider.displayName}`);
   }
 
-  private getWorkingDirectory(agent: Agent): string {
-    return agent.getState(TerminalState).workingDirectory;
+  getWorkingDirectory(agent: Agent): string {
+    return path.normalize(agent.getState(TerminalState).workingDirectory);
   }
 
-  private resolveWorkingDirectory(baseWorkingDirectory: string, workingDirectory?: string): string {
-    if (!workingDirectory) {
-      return baseWorkingDirectory;
+  requireAgentRecord(terminalName: string, agent: Agent) {
+    const session = this.terminalSessionRegistry.requireItemByName(terminalName);
+    const record = session.connectedAgents.get(agent.id);
+    if (!record) {
+      throw new Error(`Agent ${agent.id} is not connected to terminal ${terminalName}`);
+    }
+    return record;
+  }
+
+  connectAgentToSession(terminal: TerminalSessionRecord, agent: Agent): void {
+    terminal.connectedAgents.set(agent.id, {lastPosition: 0});
+  }
+
+  async disconnectAgentFromSession(terminalName: string, agent: Agent): Promise<{ deleted: boolean }> {
+    const session = this.terminalSessionRegistry.getItemByName(terminalName);
+    if (!session) {
+      throw new Error(`Terminal '${terminalName}' not found`);
     }
 
-    return path.isAbsolute(workingDirectory)
-      ? path.normalize(workingDirectory)
-      : path.resolve(baseWorkingDirectory, workingDirectory);
-  }
-
-  private resolveExecuteOptions(
-    options: Partial<ExecuteCommandOptions>,
-    baseWorkingDirectory: string,
-    timeoutSeconds: number
-  ): ExecuteCommandOptions {
-    return {
-      timeoutSeconds,
-      ...options,
-      workingDirectory: this.resolveWorkingDirectory(baseWorkingDirectory, options.workingDirectory),
-    };
-  }
-
-  private resolveAgentExecuteOptions(
-    options: Partial<ExecuteCommandOptions>,
-    agent: Agent,
-    timeoutSeconds: number
-  ): ExecuteCommandOptions {
-    return this.resolveExecuteOptions(options, this.getWorkingDirectory(agent), timeoutSeconds);
-  }
-
-  private resolveDetachedExecuteOptions(
-    options: Partial<ExecuteCommandOptions>,
-    timeoutSeconds: number
-  ): ExecuteCommandOptions {
-    return this.resolveExecuteOptions(options, this.options.agentDefaults.workingDirectory, timeoutSeconds);
-  }
-
-  private requireTerminalRecord(name: string): TerminalSessionRecord {
-    const terminal = this.terminalSessionRegistry.getItemByName(name);
-    if (!terminal) {
-      throw new Error(`Terminal ${name} not found`);
+    const deleted = session.connectedAgents.delete(agent.id);
+    if (session.connectedAgents.size === 0) {
+      await this.closeSession(terminalName);
     }
-    return terminal;
+    return {deleted};
   }
 
-  private requireTerminalConnection(name: string, agent: Agent): {terminal: TerminalSessionRecord; connection: TerminalConnection} {
-    const terminal = this.requireTerminalRecord(name);
-    if (!agent.getState(TerminalState).isConnectedToTerminal(name)) {
-      throw new Error(`Terminal ${name} is not connected to agent ${agent.id}`);
-    }
-
-    const connection = terminal.connectedAgents.get(agent.id);
-    if (!connection) {
-      throw new Error(`Terminal ${name} is not connected to agent ${agent.id}`);
-    }
-
-    return {terminal, connection};
-  }
-
-  private createUniqueTerminalName(): string {
-    let terminalName = generateHumanId();
-    while (this.terminalSessionRegistry.getItemByName(terminalName)) {
-      terminalName = generateHumanId();
-    }
-    return terminalName;
-  }
-
-  private connectAgentToTerminalRecord(terminal: TerminalSessionRecord, agent: Agent, lastPosition: number): void {
-    terminal.connectedAgents.set(agent.id, {lastPosition});
-    agent.mutateState(TerminalState, (state: TerminalState) => {
-      state.connectTerminal(terminal.name);
-    });
-  }
-
-  private disconnectAgentFromTerminalRecord(terminal: TerminalSessionRecord, agent: Agent): void {
-    terminal.connectedAgents.delete(agent.id);
-    agent.mutateState(TerminalState, (state: TerminalState) => {
-      state.disconnectTerminal(terminal.name);
-    });
-  }
-
-  private disconnectTerminalFromAgent(terminalName: string, agent: Agent): void {
-    const terminal = this.terminalSessionRegistry.getItemByName(terminalName);
-    if (terminal) {
-      this.disconnectAgentFromTerminalRecord(terminal, agent);
-      return;
-    }
-
-    agent.mutateState(TerminalState, (state: TerminalState) => {
-      state.disconnectTerminal(terminalName);
-    });
-  }
-
-  private pruneTerminalFromAgents(terminal: TerminalSessionRecord, agents: Agent[] = []): void {
-    const handledAgentIds = new Set<string>();
-
-    for (const agent of agents) {
-      handledAgentIds.add(agent.id);
-      agent.mutateState(TerminalState, (state: TerminalState) => {
-        state.disconnectTerminal(terminal.name);
-      });
-    }
-
-    const agentManager = this.app?.getService(AgentManager);
-    if (!agentManager) return;
-
-    for (const agentId of terminal.connectedAgents.keys()) {
-      if (handledAgentIds.has(agentId)) continue;
-      const agent = agentManager.getAgent(agentId);
-      if (!agent) continue;
-      agent.mutateState(TerminalState, (state: TerminalState) => {
-        state.disconnectTerminal(terminal.name);
-      });
-    }
-  }
-
-  private unregisterTerminal(terminalName: string, agents: Agent[] = []): void {
-    const terminal = this.terminalSessionRegistry.getItemByName(terminalName);
-    if (!terminal) return;
-    this.terminalSessionRegistry.unregister(terminalName);
-    this.pruneTerminalFromAgents(terminal, agents);
-  }
-
-  private summarizeTerminal(terminal: TerminalSessionRecord, agent?: Agent): TerminalSessionSummary {
-    const provider = this.requireTerminalProviderByName(terminal.providerName);
-    const status = provider.getSessionStatus(terminal.providerSessionId);
-    const summary: TerminalSessionSummary = {
-      name: terminal.name,
-      providerName: terminal.providerName,
-      workingDirectory: terminal.workingDirectory,
-      startTime: status?.startTime ?? terminal.startTime,
-      running: status?.running ?? false,
-      outputLength: status?.outputLength ?? 0,
-      exitCode: status?.exitCode ?? null,
-      connectedAgentIds: Array.from(terminal.connectedAgents.keys()),
-      lastInput: terminal.lastInput,
-    };
-
-    if (agent) {
-      summary.lastPosition = terminal.connectedAgents.get(agent.id)?.lastPosition ?? 0;
-    }
-
-    return summary;
-  }
-
-  listTerminals(agent?: Agent): TerminalSessionSummary[] {
-    if (!agent) {
-      return this.terminalSessionRegistry.getAllItemValues().map(terminal => this.summarizeTerminal(terminal));
-    }
-
-    return agent
-      .getState(TerminalState)
-      .listConnectedTerminalNames()
-      .map(terminalName => this.terminalSessionRegistry.getItemByName(terminalName))
-      .filter((terminal): terminal is TerminalSessionRecord => Boolean(terminal))
-      .map(terminal => this.summarizeTerminal(terminal, agent));
-  }
-
-  attachTerminalToAgent(terminalName: string, agent: Agent, fromPosition = 0): void {
-    this.connectAgentToTerminalRecord(this.requireTerminalRecord(terminalName), agent, fromPosition);
-  }
-
-  detachTerminalFromAgent(terminalName: string, agent: Agent): void {
-    this.disconnectTerminalFromAgent(terminalName, agent);
-  }
-
-  async spawnTerminal({
-    agent,
+  async createSession({
     providerName,
     workingDirectory,
-    connectToAgent = Boolean(agent),
+                        isolation,
+                        attachToAgent
   }: SpawnTerminalOptions): Promise<string> {
-    const resolvedProviderName = providerName ?? agent?.getState(TerminalState).providerName ?? this.options.agentDefaults.provider;
-    const provider = this.terminalProviderRegistry.requireItemByName(resolvedProviderName);
-    const executeOptions = agent
-      ? this.resolveAgentExecuteOptions({workingDirectory}, agent, 0)
-      : this.resolveDetachedExecuteOptions({workingDirectory}, 0);
+    const provider = this.terminalProviderRegistry.requireItemByName(providerName);
+    if (!provider.isInteractive) {
+      throw new Error(`Provider '${providerName}' does not support interactive sessions`);
+    }
 
-    const providerSessionId = await provider.startInteractiveSession(executeOptions);
-    const terminalName = this.createUniqueTerminalName();
+    const providerSessionId = await provider.startInteractiveSession({workingDirectory, isolation});
+    const name = generateHumanId();
     const terminal: TerminalSessionRecord = {
-      name: terminalName,
-      providerName: resolvedProviderName,
+      name,
+      providerName,
       providerSessionId,
-      workingDirectory: executeOptions.workingDirectory,
+      workingDirectory,
       startTime: Date.now(),
       connectedAgents: new Map(),
     };
 
-    this.terminalSessionRegistry.register(terminalName, terminal);
+    this.terminalSessionRegistry.register(name, terminal);
 
-    if (agent && connectToAgent) {
-      this.connectAgentToTerminalRecord(terminal, agent, 0);
+    if (attachToAgent) {
+      this.connectAgentToSession(terminal, attachToAgent);
     }
 
-    return terminalName;
+    return name;
   }
 
-  async sendInputToTerminal(terminalName: string, input: string): Promise<void> {
-    const terminal = this.requireTerminalRecord(terminalName);
-    const provider = this.requireTerminalProviderByName(terminal.providerName);
+  async sendInput(terminalName: string, input: string): Promise<void> {
+    const terminal = this.requireSession(terminalName);
+    const provider = this.requireProviderByName(terminal.providerName);
+    if (!provider.isInteractive) {
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+    }
+
     terminal.lastInput = input;
     await provider.sendInput(terminal.providerSessionId, input);
   }
 
-  async retrieveTerminalOutput(
+  async readOutput(
     terminalName: string,
     options: RetrieveTerminalOutputOptions,
   ): Promise<{ output: string; position: number; complete: boolean }> {
-    const terminal = this.requireTerminalRecord(terminalName);
-    const provider = this.requireTerminalProviderByName(terminal.providerName);
+    const terminal = this.requireSession(terminalName);
+    const provider = this.requireProviderByName(terminal.providerName);
+    if (!provider.isInteractive) {
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+    }
+
     const {fromPosition, minInterval, settleInterval, maxInterval, cropOutput} = options;
 
     await delay(minInterval * 1000);
@@ -373,9 +236,12 @@ export default class TerminalService implements TokenRingService {
     };
   }
 
-  async getCompleteTerminalOutput(terminalName: string): Promise<string> {
-    const terminal = this.requireTerminalRecord(terminalName);
-    const provider = this.requireTerminalProviderByName(terminal.providerName);
+  async readFullOutput(terminalName: string): Promise<string> {
+    const terminal = this.requireSession(terminalName);
+    const provider = this.requireProviderByName(terminal.providerName);
+    if (!provider.isInteractive) {
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+    }
     const result = await provider.collectOutput(terminal.providerSessionId, 0, {
       minInterval: 0,
       settleInterval: 0,
@@ -385,11 +251,30 @@ export default class TerminalService implements TokenRingService {
     return result.output;
   }
 
-  async terminateTerminal(terminalName: string): Promise<void> {
-    const terminal = this.requireTerminalRecord(terminalName);
-    const provider = this.requireTerminalProviderByName(terminal.providerName);
+  async closeSession(terminalName: string): Promise<void> {
+    const terminal = this.requireSession(terminalName);
+    const provider = this.requireProviderByName(terminal.providerName);
+    if (!provider.isInteractive) {
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+    }
+
     await provider.terminateSession(terminal.providerSessionId);
-    this.unregisterTerminal(terminalName);
+    this.terminalSessionRegistry.unregister(terminalName);
+  }
+
+  resolveWorkingDirectory(workingDirectory: string | undefined, defaultWorkingDirectory: string): string {
+    if (workingDirectory) {
+      return path.resolve(defaultWorkingDirectory, workingDirectory);
+    }
+    return defaultWorkingDirectory;
+  }
+
+  buildExecutionOptions(options: Partial<ExecuteCommandOptions>, agent: Agent): ExecuteCommandOptions {
+    return {
+      timeoutSeconds: options.timeoutSeconds ?? 120,
+      isolation: options.isolation ?? "sandbox",
+      workingDirectory: this.resolveWorkingDirectory(options.workingDirectory, this.getWorkingDirectory(agent)),
+    };
   }
 
   async executeCommand(
@@ -398,73 +283,23 @@ export default class TerminalService implements TokenRingService {
     options: Partial<ExecuteCommandOptions>,
     agent: Agent
   ): Promise<ExecuteCommandResult> {
-    return this.requireActiveTerminal(agent)
-      .executeCommand(command, args, this.resolveAgentExecuteOptions(options, agent, 120));
+    return this.requireActiveProvider(agent).executeCommand(
+      command,
+      args,
+      this.buildExecutionOptions(options, agent)
+    );
   }
 
   async runScript(script: string, options: Partial<ExecuteCommandOptions>, agent: Agent): Promise<ExecuteCommandResult> {
-    return this.requireActiveTerminal(agent)
-      .runScript(script, this.resolveAgentExecuteOptions(options, agent, 120));
+    return this.requireActiveProvider(agent).runScript(script, this.buildExecutionOptions(options, agent));
   }
 
-  async startInteractiveSession(
-    agent: Agent,
-    command: string
-  ): Promise<string> {
-    const terminalName = await this.spawnTerminal({agent, connectToAgent: true});
-    await this.sendInputToSession(terminalName, command, agent)
-    return terminalName;
-  }
-
-  async sendInputToSession(
-    terminalName: string,
-    input: string,
-    agent: Agent
-  ): Promise<void> {
-    this.requireTerminalConnection(terminalName, agent);
-    await this.sendInputToTerminal(terminalName, input);
-  }
-
-  async terminateSession(terminalName: string, agent: Agent): Promise<void> {
-    this.requireTerminalConnection(terminalName, agent);
-    const terminal = this.requireTerminalRecord(terminalName);
-    const provider = this.requireTerminalProviderByName(terminal.providerName);
-    await provider.terminateSession(terminal.providerSessionId);
-    this.unregisterTerminal(terminalName, [agent]);
-  }
-
-  async retrieveSessionOutput(
-    terminalName: string,
-    agent: Agent
-  ): Promise<{ output: string; position: number; complete: boolean }> {
-    const {connection} = this.requireTerminalConnection(terminalName, agent);
-    const state = agent.getState(TerminalState);
-    const { minInterval, settleInterval, maxInterval } = state.interactiveConfig;
-
-    const fromPosition = connection.lastPosition;
-
-    agent.infoMessage(`Retrieving session output for ${terminalName} from position ${fromPosition}`);
-    const result = await this.retrieveTerminalOutput(terminalName, {
-      fromPosition,
-      minInterval,
-      settleInterval,
-      maxInterval,
-      cropOutput: state.bash.cropOutput,
-    });
-
-    connection.lastPosition = result.position;
-    agent.infoMessage(`Retrieved session output for ${terminalName} from position ${fromPosition} with length ${result.output.length}`);
-
-    return {
-      output: result.output,
-      position: result.position,
-      complete: result.complete
-    };
-  }
-
-  async getCompleteSessionOutput(terminalName: string, agent: Agent): Promise<string> {
-    this.requireTerminalConnection(terminalName, agent);
-    return this.getCompleteTerminalOutput(terminalName);
+  private requireSession(name: string): TerminalSessionRecord {
+    const terminal = this.terminalSessionRegistry.getItemByName(name);
+    if (!terminal) {
+      throw new Error(`Terminal ${name} not found`);
+    }
+    return terminal;
   }
 
   getCommandSafetyLevel(shellString: string): "safe" | "unknown" | "dangerous" {

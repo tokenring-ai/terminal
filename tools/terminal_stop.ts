@@ -4,21 +4,17 @@ import {z} from "zod";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_stop";
-const displayName = "Terminal/Stop";
+const displayName = "Interactive Terminal/Stop";
 
 export async function execute(
   { terminalName }: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
-  const terminal = agent.requireServiceByType(TerminalService);
+  const terminalService = agent.requireServiceByType(TerminalService);
 
-  try {
-    await terminal.terminateSession(terminalName, agent);
-    return `Terminal ${terminalName} terminated.`;
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`[${name}] ${message}`);
-  }
+  const result = await terminalService.disconnectAgentFromSession(terminalName, agent);
+
+  return `Terminal ${terminalName} ${result.deleted ? 'detached & terminated.' : 'detached'}`;
 }
 
 const description = "Terminate a persistent terminal session.";
@@ -27,6 +23,16 @@ const inputSchema = z.object({
   terminalName: z.string().describe("The terminal name to terminate"),
 });
 
+function adjustActivation(enabled: boolean, agent: Agent) {
+  if (enabled) {
+    const terminal = agent.requireServiceByType(TerminalService);
+    const activeTerminalProvider = terminal.requireActiveProvider(agent);
+    if (!activeTerminalProvider.isInteractive) {
+      return false;
+    }
+  }
+  return enabled;
+}
 export default {
-  name, displayName, description, inputSchema, execute,
+  name, displayName, description, inputSchema, execute, adjustActivation
 } satisfies TokenRingToolDefinition<typeof inputSchema>;

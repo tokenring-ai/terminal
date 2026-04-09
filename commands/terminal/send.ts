@@ -1,5 +1,4 @@
 import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
-import codeBlock from "@tokenring-ai/utility/string/codeBlock";
 import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
@@ -9,10 +8,10 @@ const inputSchema = {
 } as const satisfies AgentCommandInputSchema;
 
 async function execute({positionals: {terminalName}, remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const terminal = agent.requireServiceByType(TerminalService);
-  await terminal.sendInputToSession(terminalName, remainder, agent);
-  const result = await terminal.retrieveSessionOutput(terminalName, agent);
-  return codeBlock(result.output);
+  const terminalService = agent.requireServiceByType(TerminalService);
+
+  await terminalService.sendInput(terminalName, remainder);
+  return "Input sent to terminal";
 }
 
 export default {

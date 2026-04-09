@@ -16,7 +16,10 @@ export default {
 /terminal stop term-1`,
   inputSchema,
   execute: async ({positionals: {terminalName}, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    await agent.requireServiceByType(TerminalService).terminateSession(terminalName, agent);
-    return `Terminal ${terminalName} terminated.`;
+    const terminalService = agent.requireServiceByType(TerminalService);
+
+    const result = await terminalService.disconnectAgentFromSession(terminalName, agent);
+
+    return `Terminal ${terminalName} ${result.deleted ? 'detached & terminated.' : 'detached'}`;
   },
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

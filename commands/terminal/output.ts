@@ -17,6 +17,6 @@ export default {
 /terminal output term-1`,
   inputSchema,
   execute: async ({positionals: { terminalName }, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    return codeBlock(await agent.requireServiceByType(TerminalService).getCompleteSessionOutput(terminalName, agent));
+    return codeBlock(await agent.requireServiceByType(TerminalService).readFullOutput(terminalName));
   },
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

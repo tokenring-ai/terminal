@@ -1,28 +1,42 @@
 import Agent from "@tokenring-ai/agent/Agent";
 import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
 import {z} from "zod";
+import {TerminalState} from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_continue";
-const displayName = "Terminal/Continue";
+const displayName = "Interactive Terminal/Continue";
 
 export async function execute(
   { terminalName, stdin }: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
   const terminal = agent.requireServiceByType(TerminalService);
+  const {lastPosition} = terminal.requireAgentRecord(terminalName, agent);
 
+  const {interactiveConfig} = agent.getState(TerminalState);
+
+  const startTime = Date.now();
   if (stdin) {
-    await terminal.sendInputToSession(terminalName, stdin, agent);
+    await terminal.sendInput(terminalName, stdin);
   }
+  const result = await terminal.readOutput(terminalName, {
+    fromPosition: lastPosition,
+    ...interactiveConfig,
+  });
 
-  const result = await terminal.retrieveSessionOutput(terminalName, agent);
+  const runTime = Math.floor(Date.now() - startTime);
+
+  terminal.requireAgentRecord(terminalName, agent).lastPosition = result.position;
 
   return `
-Terminal Session: ${terminalName}
+${stdin ? `> ${stdin}` : ''}
+---
+${result.output ?? '[No additional output]'}
+---
 
-Output:
-${result.output}
+[${runTime}ms]
+${result.complete ? 'Terminal was closed' : `Terminal is still running`}
 `.trim();
 }
 
@@ -37,6 +51,17 @@ const inputSchema = z.object({
   stdin: z.string().optional().describe("Input to send to the terminal."),
 });
 
+function adjustActivation(enabled: boolean, agent: Agent) {
+  if (enabled) {
+    const terminal = agent.requireServiceByType(TerminalService);
+    const activeTerminalProvider = terminal.requireActiveProvider(agent);
+    if (!activeTerminalProvider.isInteractive) {
+      return false;
+    }
+  }
+  return enabled;
+}
+
 export default {
-  name, displayName, description, inputSchema, execute,
+  name, displayName, description, inputSchema, execute, adjustActivation
 } satisfies TokenRingToolDefinition<typeof inputSchema>;
