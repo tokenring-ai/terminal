@@ -1,5 +1,5 @@
-import Agent from "@tokenring-ai/agent/Agent";
-import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
+import type Agent from "@tokenring-ai/agent/Agent";
+import type {TokenRingToolDefinition, TokenRingToolTextResult,} from "@tokenring-ai/chat/schema";
 import intelligentTruncate from "@tokenring-ai/utility/string/intelligentTruncate";
 import {z} from "zod";
 import {TerminalState} from "../state/terminalState.ts";
@@ -9,10 +9,7 @@ const name = "shell_bash";
 const displayName = "Shell/bash";
 
 export async function execute(
-  {
-    command,
-    dangerouslyDisableSandbox
-  }: z.output<typeof inputSchema>,
+  {command, disableSandbox}: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
   const terminal = agent.requireServiceByType(TerminalService);
@@ -31,12 +28,12 @@ export async function execute(
 
   agent.infoMessage(`Running ${cmdString}`);
 
-  if (dangerouslyDisableSandbox) {
+  if (disableSandbox) {
     const confirmed = await agent.askForApproval({
       message: `Execute potentially dangerous command outside of the sandbox: ${cmdString}?`,
       default: true,
       timeout: 10,
-    })
+    });
 
     if (!confirmed) throw new Error("User did not approve command execution");
   } else {
@@ -51,7 +48,7 @@ export async function execute(
     } else if (commandSafetyLevel === "dangerous") {
       const confirmed = await agent.askForApproval({
         message: `Execute potentially dangerous command: ${cmdString}?`,
-      })
+      });
       if (!confirmed) throw new Error("User did not approve command execution");
     }
   }
@@ -63,51 +60,67 @@ export async function execute(
 
   const result = await activeTerminalProvider.runScript(command, {
     timeoutSeconds: bashOptions.timeoutSeconds,
-    isolation: dangerouslyDisableSandbox ? 'none' : 'sandbox',
+    isolation: disableSandbox ? "none" : "sandbox",
     workingDirectory,
   });
 
   const runTime = Math.floor(Date.now() - startTime);
 
-  let resultText = `\$ ${command.trim()}\n`;
+  let resultText = `$ ${command.trim()}\n`;
 
   switch (result.status) {
     case "success":
     case "badExitCode": {
-      let croppedOutput = intelligentTruncate(result.output, { maxLength: bashOptions.cropOutput, suffix: "\n [...Results were too long, truncated...]"}).trim();
+      const croppedOutput = intelligentTruncate(result.output, {
+        maxLength: bashOptions.cropOutput,
+        suffix: "\n [...Results were too long, truncated...]",
+      }).trim();
 
       resultText += `${croppedOutput}\n[exit: ${result.exitCode} | ${runTime}ms]`;
-    } break;
+    }
+      break;
     case "timeout":
-      resultText += "[timeout: The command took too long to complete, and timed out]";
+      resultText +=
+        "[timeout: The command took too long to complete, and timed out]";
       break;
     case "unknownError":
       resultText += `[error: ${result.error}]`;
       break;
-    default:
+    default: {
       const foo: never = result;
       throw new Error(`[${name}] Unknown result status: ${foo}`);
+    }
   }
 
   return {
-    type: 'text',
+    type: "text",
     text: resultText,
     artifact: {
-      name: `Bash (${intelligentTruncate(command, { maxLength: 100 }).trim()})`,
+      name: `Bash (${intelligentTruncate(command, {maxLength: 100}).trim()})`,
       mimeType: "application/x-shellscript",
       encoding: "text",
-      body: resultText
-    }
+      body: resultText,
+    },
   };
 }
 
-const description = "Runs a shell command in a sandbox. Output is truncated to reasonable size.";
+const description =
+  "Runs a shell command in a sandbox. Output is truncated to reasonable size.";
 
 const inputSchema = z.object({
   command: z.string().describe("The shell command to execute."),
-  dangerouslyDisableSandbox: z.boolean().default(false).describe("Disables the sandbox, which can be dangerous. Prompts the user for permission before executing the command.")
+  disableSandbox: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Disables the sandbox, which might resolve issues with certain commands.",
+    ),
 });
 
 export default {
-  name, displayName, description, inputSchema, execute,
+  name,
+  displayName,
+  description,
+  inputSchema,
+  execute,
 } satisfies TokenRingToolDefinition<typeof inputSchema>;

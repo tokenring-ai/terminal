@@ -1,4 +1,4 @@
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand,} from "@tokenring-ai/agent/types";
 import markdownTable from "@tokenring-ai/utility/string/markdownTable";
 import TerminalService from "../../TerminalService.ts";
 
@@ -13,19 +13,29 @@ export default {
 
 /terminal list`,
   inputSchema,
-  execute: async ({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
+  execute: ({
+              agent,
+            }: AgentCommandInputType<typeof inputSchema>): string => {
     const terminalService = agent.requireServiceByType(TerminalService);
 
-    return "Attached Terminals:\n" +
-      markdownTable(['Name', 'Last Input', 'Uptime', 'Attached Agents'],
-        terminalService.getAllTerminalSessions().map(([terminalName, terminalSession]) => {
-          const uptime = Math.floor((Date.now() - terminalSession.startTime) / 1000);
-          return [
-            terminalName,
-            (terminalSession?.lastInput ?? "[No Input]").substring(0, 30),
-            `${uptime}s`,
-            Array.from(terminalSession.connectedAgents.keys()).join(', '),
-          ];
-        }));
+    return (
+      "Attached Terminals:\n" +
+      markdownTable(
+        ["Name", "Last Input", "Uptime", "Attached Agents"],
+        terminalService
+          .getAllTerminalSessions()
+          .map(([terminalName, terminalSession]) => {
+            const uptime = Math.floor(
+              (Date.now() - terminalSession.startTime) / 1000,
+            );
+            return [
+              terminalName,
+              (terminalSession?.lastInput ?? "[No Input]").substring(0, 30),
+              `${uptime}s`,
+              Array.from(terminalSession.connectedAgents.keys()).join(", "),
+            ];
+          }),
+      )
+    );
   },
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

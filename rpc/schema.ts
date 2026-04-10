@@ -1,5 +1,5 @@
 import {z} from "zod";
-import {RPCSchema} from "../../rpc/types.ts";
+import type {RPCSchema} from "../../rpc/types.ts";
 import {TerminalSessionSummarySchema} from "../schema.ts";
 
 export default {

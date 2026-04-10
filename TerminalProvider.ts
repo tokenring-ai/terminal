@@ -1,4 +1,6 @@
-export type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
+import type {MaybePromise} from "bun";
+
+export type TerminalIsolationLevel = "none" | "sandbox" | "container";
 
 export interface ExecuteCommandOptions {
   timeoutSeconds: number;
@@ -11,19 +13,23 @@ export interface InteractiveTerminalOptions {
   isolation: TerminalIsolationLevel;
 }
 
-export type ExecuteCommandResult = {
-  status: "success",
-  output: string,
-  exitCode: 0,
-} | {
-  status: "badExitCode",
-  output: string,
-  exitCode: number,
-} | {
-  status: "timeout",
-} | {
-  status: "unknownError",
-  error: string,
+export type ExecuteCommandResult =
+  | {
+  status: "success";
+  output: string;
+  exitCode: 0;
+}
+  | {
+  status: "badExitCode";
+  output: string;
+  exitCode: number;
+}
+  | {
+  status: "timeout";
+}
+  | {
+  status: "unknownError";
+  error: string;
 };
 
 export interface OutputWaitOptions {
@@ -55,12 +61,12 @@ export interface BaseTerminalProvider {
     command: string,
     args: string[],
     options: ExecuteCommandOptions,
-  ): Promise<ExecuteCommandResult>;
+  ): MaybePromise<ExecuteCommandResult>;
 
   runScript(
     script: string,
     options: ExecuteCommandOptions,
-  ): Promise<ExecuteCommandResult>;
+  ): MaybePromise<ExecuteCommandResult>;
 }
 
 export interface NonInteractiveTerminalProvider extends BaseTerminalProvider {
@@ -70,19 +76,21 @@ export interface NonInteractiveTerminalProvider extends BaseTerminalProvider {
 export interface InteractiveTerminalProvider extends BaseTerminalProvider {
   isInteractive: true;
 
-  startInteractiveSession(options: InteractiveTerminalOptions): Promise<string>;
+  startInteractiveSession(options: InteractiveTerminalOptions): MaybePromise<string>;
 
-  sendInput(sessionId: string, input: string): Promise<void>;
+  sendInput(sessionId: string, input: string): MaybePromise<void>;
 
   collectOutput(
     sessionId: string,
     fromPosition: number,
-    waitOptions: OutputWaitOptions
-  ): Promise<InteractiveTerminalOutput>;
+    waitOptions: OutputWaitOptions,
+  ): MaybePromise<InteractiveTerminalOutput>;
 
-  terminateSession(sessionId: string): Promise<void>;
+  terminateSession(sessionId: string): MaybePromise<void>;
 
   getSessionStatus(sessionId: string): SessionStatus | null;
 }
 
-export type TerminalProvider = NonInteractiveTerminalProvider | InteractiveTerminalProvider;
+export type TerminalProvider =
+  | NonInteractiveTerminalProvider
+  | InteractiveTerminalProvider;

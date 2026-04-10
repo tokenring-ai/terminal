@@ -1,15 +1,22 @@
 import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand,} from "@tokenring-ai/agent/types";
 import TerminalService from "../../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [{name: "providerName", description: "Provider name", required: true}]
+  positionals: [
+    {name: "providerName", description: "Provider name", required: true},
+  ],
 } as const satisfies AgentCommandInputSchema;
 
-async function execute({positionals: { providerName }, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+function execute({
+                   positionals: {providerName},
+                   agent,
+                 }: AgentCommandInputType<typeof inputSchema>): string {
   try {
-    agent.requireServiceByType(TerminalService).setActiveProvider(providerName, agent);
+    agent
+      .requireServiceByType(TerminalService)
+      .setActiveProvider(providerName, agent);
     return `Active provider set to: ${providerName}`;
   } catch {
     throw new CommandFailedError(`Provider "${providerName}" not found.`);

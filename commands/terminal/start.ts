@@ -1,5 +1,5 @@
 import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand,} from "@tokenring-ai/agent/types";
 import type {TerminalIsolationLevel} from "../../TerminalProvider.ts";
 import TerminalService from "../../TerminalService.ts";
 
@@ -9,20 +9,26 @@ const inputSchema = {
       type: "string",
       description: "Isolation level for the terminal session",
       required: false,
-      defaultValue: ""
+      defaultValue: "",
     },
   },
   remainder: {
     name: "command",
     description: "Command to start",
-    required: true
-  }
+    required: true,
+  },
 } as const satisfies AgentCommandInputSchema;
 
-async function execute({args, remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+async function execute({
+                         args,
+                         remainder,
+                         agent,
+                       }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const isolation = args["--isolation"];
-  if (isolation && ['none', 'sandbox'].includes(isolation)) {
-    throw new CommandFailedError(`Invalid isolation level: ${isolation}. Valid options are 'none' or 'sandbox'.`);
+  if (isolation && ["none", "sandbox"].includes(isolation)) {
+    throw new CommandFailedError(
+      `Invalid isolation level: ${isolation}. Valid options are 'none' or 'sandbox'.`,
+    );
   }
 
   const terminalService = agent.requireServiceByType(TerminalService);
@@ -32,8 +38,10 @@ async function execute({args, remainder, agent}: AgentCommandInputType<typeof in
     attachToAgent: agent,
     providerName: terminalService.requireActiveProviderName(agent),
     workingDirectory,
-    isolation: isolation as TerminalIsolationLevel
+    isolation: isolation as TerminalIsolationLevel,
   });
+
+  await terminalService.sendInput(terminalName, remainder);
 
   return `Terminal ${terminalName} started`;
 }

@@ -1,11 +1,13 @@
 import type {TreeLeaf} from "@tokenring-ai/agent/question";
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand,} from "@tokenring-ai/agent/types";
 import {TerminalState} from "../../../state/terminalState.ts";
 import TerminalService from "../../../TerminalService.ts";
 
 const inputSchema = {} as const satisfies AgentCommandInputSchema;
 
-async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+async function execute({
+                         agent,
+                       }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
   const available = terminal.getAvailableProviders();
   if (available.length === 0) return "No terminal providers are registered.";
@@ -14,10 +16,21 @@ async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Prom
     return `Only one provider configured, auto-selecting: ${available[0]}`;
   }
   const activeProvider = agent.getState(TerminalState).providerName;
-  const tree: TreeLeaf[] = available.map(name => ({ name: `${name}${name === activeProvider ? " (current)" : ""}`, value: name }));
+  const tree: TreeLeaf[] = available.map((name) => ({
+    name: `${name}${name === activeProvider ? " (current)" : ""}`,
+    value: name,
+  }));
   const selection = await agent.askQuestion({
     message: "Select an active terminal provider",
-    question: { type: 'treeSelect', label: "Terminal Provider Selection", key: "result", defaultValue: activeProvider ? [activeProvider] : undefined, minimumSelections: 1, maximumSelections: 1, tree },
+    question: {
+      type: "treeSelect",
+      label: "Terminal Provider Selection",
+      key: "result",
+      defaultValue: activeProvider ? [activeProvider] : undefined,
+      minimumSelections: 1,
+      maximumSelections: 1,
+      tree,
+    },
   });
   if (selection) {
     terminal.setActiveProvider(selection[0], agent);

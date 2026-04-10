@@ -13,9 +13,15 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
   providerName: string;
   workingDirectory: string;
   bash: z.output<typeof TerminalConfigSchema>["agentDefaults"]["bash"];
-  interactiveConfig: z.output<typeof TerminalConfigSchema>["agentDefaults"]["interactive"];
+  interactiveConfig: z.output<
+    typeof TerminalConfigSchema
+  >["agentDefaults"]["interactive"];
 
-  constructor(readonly initialConfig: z.output<typeof TerminalConfigSchema>["agentDefaults"]) {
+  constructor(
+    readonly initialConfig: z.output<
+      typeof TerminalConfigSchema
+    >["agentDefaults"],
+  ) {
     super("TerminalState", serializationSchema);
     this.providerName = initialConfig.provider ?? null;
     this.workingDirectory = initialConfig.workingDirectory;
@@ -39,11 +45,9 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
     this.interactiveConfig = data.interactiveConfig;
   }
 
-  show(): string[] {
-    return [
-      `Provider: ${this.providerName}`,
-      `Working Directory: ${this.workingDirectory}`,
-      `Output Crop Limit: ${this.bash.cropOutput} chars`,
-    ];
+  show(): string {
+    return `Provider: ${this.providerName}
+Working Directory: ${this.workingDirectory}
+Output Crop Limit: ${this.bash.cropOutput} chars`;
   }
 }

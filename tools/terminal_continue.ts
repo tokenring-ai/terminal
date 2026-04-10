@@ -1,5 +1,5 @@
-import Agent from "@tokenring-ai/agent/Agent";
-import {TokenRingToolDefinition, type TokenRingToolTextResult} from "@tokenring-ai/chat/schema";
+import type Agent from "@tokenring-ai/agent/Agent";
+import type {TokenRingToolDefinition, TokenRingToolTextResult,} from "@tokenring-ai/chat/schema";
 import {z} from "zod";
 import {TerminalState} from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
@@ -8,7 +8,7 @@ const name = "terminal_continue";
 const displayName = "Interactive Terminal/Continue";
 
 export async function execute(
-  { terminalName, stdin }: z.output<typeof inputSchema>,
+  {terminalName, stdin}: z.output<typeof inputSchema>,
   agent: Agent,
 ): Promise<TokenRingToolTextResult> {
   const terminal = agent.requireServiceByType(TerminalService);
@@ -27,16 +27,17 @@ export async function execute(
 
   const runTime = Math.floor(Date.now() - startTime);
 
-  terminal.requireAgentRecord(terminalName, agent).lastPosition = result.position;
+  terminal.requireAgentRecord(terminalName, agent).lastPosition =
+    result.position;
 
   return `
-${stdin ? `> ${stdin}` : ''}
+${stdin ? `> ${stdin}` : ""}
 ---
-${result.output ?? '[No additional output]'}
+${result.output ?? "[No additional output]"}
 ---
 
 [${runTime}ms]
-${result.complete ? 'Terminal was closed' : `Terminal is still running`}
+${result.complete ? "Terminal was closed" : `Terminal is still running`}
 `.trim();
 }
 
@@ -63,5 +64,10 @@ function adjustActivation(enabled: boolean, agent: Agent) {
 }
 
 export default {
-  name, displayName, description, inputSchema, execute, adjustActivation
+  name,
+  displayName,
+  description,
+  inputSchema,
+  execute,
+  adjustActivation,
 } satisfies TokenRingToolDefinition<typeof inputSchema>;
