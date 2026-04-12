@@ -10,7 +10,7 @@ import {setTimeout as delay} from "node:timers/promises";
 import type {z} from "zod";
 import {TerminalAgentConfigSchema, type TerminalConfigSchema} from "./schema.ts";
 import {TerminalState} from "./state/terminalState.ts";
-import type {ExecuteCommandOptions, ExecuteCommandResult, TerminalIsolationLevel, TerminalProvider,} from "./TerminalProvider.ts";
+import type {ExecuteCommandOptions, ExecuteCommandResult, TerminalIsolationLevel, TerminalProvider} from "./TerminalProvider.ts";
 
 type TerminalConnection = {
   lastPosition: number;

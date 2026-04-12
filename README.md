@@ -325,7 +325,7 @@ interface SessionRecord {
 
 ## Tools
 
-### terminal_bash
+### shell_bash
 
 Tool for executing shell commands through the agent interface.
 
@@ -573,6 +573,7 @@ import { TerminalConfigSchema } from './schema.ts';
 ```
 
 The schema includes:
+
 - `agentDefaults`: Default configuration for all agents
 - `providers`: Terminal provider configurations
 - `safeCommands`: List of safe command patterns
@@ -728,14 +729,14 @@ terminal.registerTerminalProvider('my-provider', new MyTerminalProvider());
 terminal.setActiveTerminal('my-provider', agent);
 ```
 
-### Using the terminal_bash Tool
+### Using the shell_bash Tool
 
 When using the agent interface:
 
 ```typescript
-// Agent will automatically use terminal_bash tool
+// Agent will automatically use shell_bash tool
 const result = await agent.execute({
-  tool: 'terminal_bash',
+  tool: 'shell_bash',
   arguments: {
     command: 'ls -la'
   }
@@ -931,7 +932,7 @@ pkg/terminal/
 ├── state/
 │   └── terminalState.ts     # State management for terminal sessions
 ├── tools/
-│   ├── bash.ts              # terminal_bash tool
+│   ├── bash.ts              # shell_bash tool
 │   ├── terminal_start.ts    # terminal_start tool
 │   ├── terminal_continue.ts # terminal_continue tool
 │   ├── terminal_stop.ts     # terminal_stop tool
@@ -987,7 +988,7 @@ try {
 
 ## Best Practices
 
-1. **Use persistent sessions for long-running processes**: Always use `terminal_start` and `terminal_continue` for development servers or interactive shells instead of `terminal_bash`.
+1. **Use persistent sessions for long-running processes**: Always use `terminal_start` and `terminal_continue` for development servers or interactive shells instead of `shell_bash`.
 
 2. **Always clean up sessions**: Use `terminal_stop` to terminate sessions when done to prevent orphaned processes.
 

@@ -1,5 +1,5 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolTextResult,} from "@tokenring-ai/chat/schema";
+import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
 import {z} from "zod";
 import {TerminalState} from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
@@ -10,15 +10,13 @@ const displayName = "Interactive Terminal/Start";
 export async function execute(
   {command, disableSandbox}: z.output<typeof inputSchema>,
   agent: Agent,
-): Promise<TokenRingToolTextResult> {
+): Promise<TokenRingToolResult> {
   const terminalService = agent.requireServiceByType(TerminalService);
 
   const confirmed = await agent.askForApproval({
     message: disableSandbox
-      ? `Allow the agent to start a un-sandboxed, unrestricted, completely dangerous terminal session under your user account?`
+      ? `Allow the agent to start a un-sandboxed, unrestricted, 100% dangerous interactive terminal session under your user account?`
       : `Allow the agent to start a sandboxed, but still potentially dangerous interactive terminal session under your user account?`,
-    default: true,
-    timeout: 10,
   });
   if (!confirmed) throw new Error("User did not approve terminal creation");
 

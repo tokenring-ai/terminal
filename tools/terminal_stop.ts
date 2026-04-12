@@ -1,5 +1,5 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolTextResult,} from "@tokenring-ai/chat/schema";
+import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
 import {z} from "zod";
 import TerminalService from "../TerminalService.ts";
 
@@ -9,7 +9,7 @@ const displayName = "Interactive Terminal/Stop";
 export async function execute(
   {terminalName}: z.output<typeof inputSchema>,
   agent: Agent,
-): Promise<TokenRingToolTextResult> {
+): Promise<TokenRingToolResult> {
   const terminalService = agent.requireServiceByType(TerminalService);
 
   const result = await terminalService.disconnectAgentFromSession(

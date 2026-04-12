@@ -1,5 +1,5 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolTextResult,} from "@tokenring-ai/chat/schema";
+import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
 import markdownTable from "@tokenring-ai/utility/string/markdownTable";
 import {z} from "zod";
 import TerminalService from "../TerminalService.ts";
@@ -10,7 +10,7 @@ const displayName = "Interactive Terminal/List";
 export function execute(
   _: z.output<typeof inputSchema>,
   agent: Agent,
-): TokenRingToolTextResult {
+): TokenRingToolResult {
   const terminalService = agent.requireServiceByType(TerminalService);
 
   const connectedTerminals = terminalService
