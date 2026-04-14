@@ -54,9 +54,9 @@ export default createRPCEndpoint(TerminalRpcSchema, {
     return {success: true};
   },
 
-  detachTerminal(args, app) {
+  async detachTerminal(args, app) {
     const agent = requireAgent(app, args.agentId);
-    app
+    await app
       .requireService(TerminalService)
       .disconnectAgentFromSession(args.terminalName, agent);
     return {success: true};

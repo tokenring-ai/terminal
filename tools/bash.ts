@@ -115,8 +115,8 @@ export async function execute(
       resultText += `[error: ${result.error}]`;
       break;
     default: {
-      const foo: never = result;
-      throw new Error(`[${name}] Unknown result status: ${foo}`);
+      const unknownResultStatus: never = result;
+      throw new Error(`[${name}] Unknown result status: ${unknownResultStatus as string}`);
     }
   }
 
