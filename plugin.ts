@@ -23,7 +23,7 @@ export default {
     if (config.terminal) {
       app.addServices(new TerminalService(config.terminal));
       app.waitForService(ChatService, (chatService) => {
-        chatService.addTools(tools);
+        chatService.addTools(...tools);
       });
       app.waitForService(AgentCommandService, (agentCommandService) => {
         agentCommandService.addAgentCommands(commands);

@@ -49,14 +49,14 @@ export default class TerminalService implements TokenRingService {
 
   private terminalProviderRegistry = new KeyedRegistry<TerminalProvider>();
 
-  registerTerminalProvider = this.terminalProviderRegistry.register;
+  registerTerminalProvider = this.terminalProviderRegistry.set;
   unregisterTerminalProvider = this.terminalProviderRegistry.unregister;
-  requireProviderByName = this.terminalProviderRegistry.requireItemByName;
-  getAvailableProviders = this.terminalProviderRegistry.getAllItemNames;
+  requireProviderByName = this.terminalProviderRegistry.require;
+  getAvailableProviders = this.terminalProviderRegistry.keysArray;
 
   private terminalSessionRegistry = new KeyedRegistry<TerminalSessionRecord>();
-  getTerminalSessionByName = this.terminalSessionRegistry.getItemByName;
-  getAllTerminalSessions = this.terminalSessionRegistry.entries;
+  getTerminalSessionByName = this.terminalSessionRegistry.get;
+  getAllTerminalSessions = this.terminalSessionRegistry.entriesArray;
 
   constructor(private options: z.output<typeof TerminalConfigSchema>) {
     this.dangerousCommands = options.dangerousCommands.map(
@@ -65,7 +65,7 @@ export default class TerminalService implements TokenRingService {
   }
 
   start(_signal?: AbortSignal): void {
-    this.terminalProviderRegistry.requireItemByName(
+    this.terminalProviderRegistry.require(
       this.options.agentDefaults.provider,
     );
   }
@@ -80,7 +80,7 @@ export default class TerminalService implements TokenRingService {
     const providerName =
       initialState.providerName ?? this.options.agentDefaults.provider;
     const terminalProvider =
-      this.terminalProviderRegistry.getItemByName(providerName);
+      this.terminalProviderRegistry.get(providerName);
     creationContext.items.push(
       `Terminal Provider: ${terminalProvider?.displayName ?? "(none)"}`,
     );
@@ -90,7 +90,7 @@ export default class TerminalService implements TokenRingService {
     for (const [
       terminalName,
       terminalSession,
-    ] of this.terminalSessionRegistry.entries()) {
+    ] of this.terminalSessionRegistry.entriesArray()) {
       if (terminalSession.connectedAgents.has(agent.id)) {
         terminalSession.connectedAgents.delete(agent.id);
       }
@@ -108,14 +108,14 @@ export default class TerminalService implements TokenRingService {
   }
 
   requireActiveProvider(agent: Agent): TerminalProvider {
-    return this.terminalProviderRegistry.requireItemByName(
+    return this.terminalProviderRegistry.require(
       this.requireActiveProviderName(agent),
     );
   }
 
   setActiveProvider(providerName: string, agent: Agent): void {
     const newProvider =
-      this.terminalProviderRegistry.requireItemByName(providerName);
+      this.terminalProviderRegistry.require(providerName);
     agent.mutateState(TerminalState, (state: TerminalState) => {
       state.providerName = providerName;
     });
@@ -130,7 +130,7 @@ export default class TerminalService implements TokenRingService {
 
   requireAgentRecord(terminalName: string, agent: Agent) {
     const session =
-      this.terminalSessionRegistry.requireItemByName(terminalName);
+      this.terminalSessionRegistry.require(terminalName);
     const record = session.connectedAgents.get(agent.id);
     if (!record) {
       throw new Error(
@@ -148,7 +148,7 @@ export default class TerminalService implements TokenRingService {
     terminalName: string,
     agent: Agent,
   ): Promise<{ deleted: boolean }> {
-    const session = this.terminalSessionRegistry.getItemByName(terminalName);
+    const session = this.terminalSessionRegistry.get(terminalName);
     if (!session) {
       throw new Error(`Terminal '${terminalName}' not found`);
     }
@@ -167,7 +167,7 @@ export default class TerminalService implements TokenRingService {
                         attachToAgent,
                       }: SpawnTerminalOptions): Promise<string> {
     const provider =
-      this.terminalProviderRegistry.requireItemByName(providerName);
+      this.terminalProviderRegistry.require(providerName);
     if (!provider.isInteractive) {
       throw new Error(
         `Provider '${providerName}' does not support interactive sessions`,
@@ -188,7 +188,7 @@ export default class TerminalService implements TokenRingService {
       connectedAgents: new Map(),
     };
 
-    this.terminalSessionRegistry.register(name, terminal);
+    this.terminalSessionRegistry.set(name, terminal);
 
     if (attachToAgent) {
       this.connectAgentToSession(terminal, attachToAgent);
@@ -362,7 +362,7 @@ export default class TerminalService implements TokenRingService {
   }
 
   private requireSession(name: string): TerminalSessionRecord {
-    const terminal = this.terminalSessionRegistry.getItemByName(name);
+    const terminal = this.terminalSessionRegistry.get(name);
     if (!terminal) {
       throw new Error(`Terminal ${name} not found`);
     }

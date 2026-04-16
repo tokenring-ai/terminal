@@ -5,11 +5,11 @@ import terminal_output from "./tools/terminal_output.ts";
 import terminal_start from "./tools/terminal_start.ts";
 import terminal_stop from "./tools/terminal_stop.ts";
 
-export default {
+export default [
   bash,
   terminal_start,
   terminal_continue,
   terminal_stop,
   terminal_list,
   terminal_output,
-};
+];
