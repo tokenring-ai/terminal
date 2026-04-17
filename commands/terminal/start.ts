@@ -5,7 +5,7 @@ import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {
-    "--isolation": {
+    "isolation": {
       type: "string",
       description: "Isolation level for the terminal session",
       required: false,
@@ -24,7 +24,7 @@ async function execute({
                          remainder,
                          agent,
                        }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const isolation = args["--isolation"];
+  const isolation = args.isolation;
   if (isolation && ["none", "sandbox"].includes(isolation)) {
     throw new CommandFailedError(
       `Invalid isolation level: ${isolation}. Valid options are 'none' or 'sandbox'.`,
