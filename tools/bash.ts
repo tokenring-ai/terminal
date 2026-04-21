@@ -1,5 +1,6 @@
 import type Agent from "@tokenring-ai/agent/Agent";
 import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
+import {joinArrayable} from "@tokenring-ai/utility/array/arrayable";
 import intelligentTruncate from "@tokenring-ai/utility/string/intelligentTruncate";
 import {z} from "zod";
 import {TerminalState} from "../state/terminalState.ts";
@@ -19,9 +20,7 @@ export async function execute(
     throw new Error(`[${name}] command is required`);
   }
 
-  const cmdString = (
-    Array.isArray(command) ? command.join(" ") : command
-  ).trim();
+  const cmdString = joinArrayable(command, " ").trim();
   if (!cmdString) {
     throw new Error(`[${name}] command is required`);
   }

@@ -110,7 +110,7 @@ export class TestTerminalProvider implements TerminalProvider {
     options: ExecuteCommandOptions
   ): Promise<ExecuteCommandResult> {
     // Track the command execution
-    this.executedCommands.push({ command, args, options });
+    this.executedCommands.push({ commandList: command, args, options });
 
     if (this.shouldFail) {
       return {
@@ -171,7 +171,7 @@ export class TestTerminalProvider implements TerminalProvider {
     const command = options.workingDirectory || 'default-command';
 
     this.sessions.set(sessionId, {
-      command,
+      commandList: command,
       output: '',
       position: 0,
       running: true,
