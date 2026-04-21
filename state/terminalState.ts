@@ -1,6 +1,6 @@
-import {AgentStateSlice} from "@tokenring-ai/agent/types";
-import {z} from "zod";
-import {TerminalConfigSchema} from "../schema.ts";
+import { AgentStateSlice } from "@tokenring-ai/agent/types";
+import { z } from "zod";
+import { TerminalConfigSchema } from "../schema.ts";
 
 const serializationSchema = z.object({
   providerName: z.string(),
@@ -13,15 +13,9 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
   providerName: string;
   workingDirectory: string;
   bash: z.output<typeof TerminalConfigSchema>["agentDefaults"]["bash"];
-  interactiveConfig: z.output<
-    typeof TerminalConfigSchema
-  >["agentDefaults"]["interactive"];
+  interactiveConfig: z.output<typeof TerminalConfigSchema>["agentDefaults"]["interactive"];
 
-  constructor(
-    readonly initialConfig: z.output<
-      typeof TerminalConfigSchema
-    >["agentDefaults"],
-  ) {
+  constructor(readonly initialConfig: z.output<typeof TerminalConfigSchema>["agentDefaults"]) {
     super("TerminalState", serializationSchema);
     this.providerName = initialConfig.provider ?? null;
     this.workingDirectory = initialConfig.workingDirectory;

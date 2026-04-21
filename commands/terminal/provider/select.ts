@@ -1,13 +1,11 @@
-import type {TreeLeaf} from "@tokenring-ai/agent/question";
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
-import {TerminalState} from "../../../state/terminalState.ts";
+import type { TreeLeaf } from "@tokenring-ai/agent/question";
+import type { AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand } from "@tokenring-ai/agent/types";
+import { TerminalState } from "../../../state/terminalState.ts";
 import TerminalService from "../../../TerminalService.ts";
 
 const inputSchema = {} as const satisfies AgentCommandInputSchema;
 
-async function execute({
-                         agent,
-                       }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+async function execute({ agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const terminal = agent.requireServiceByType(TerminalService);
   const available = terminal.getAvailableProviders();
   if (available.length === 0) return "No terminal providers are registered.";
@@ -16,7 +14,7 @@ async function execute({
     return `Only one provider configured, auto-selecting: ${available[0]}`;
   }
   const activeProvider = agent.getState(TerminalState).providerName;
-  const tree: TreeLeaf[] = available.map((name) => ({
+  const tree: TreeLeaf[] = available.map(name => ({
     name: `${name}${name === activeProvider ? " (current)" : ""}`,
     value: name,
   }));

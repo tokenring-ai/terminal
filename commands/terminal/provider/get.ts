@@ -1,5 +1,5 @@
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
-import {TerminalState} from "../../../state/terminalState.ts";
+import type { AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand } from "@tokenring-ai/agent/types";
+import { TerminalState } from "../../../state/terminalState.ts";
 
 const inputSchema = {} as const satisfies AgentCommandInputSchema;
 
@@ -12,8 +12,6 @@ export default {
 
 /terminal provider get`,
   inputSchema,
-  execute: async ({
-                    agent,
-                  }: AgentCommandInputType<typeof inputSchema>): Promise<string> =>
+  execute: async ({ agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> =>
     `Current provider: ${agent.getState(TerminalState).providerName ?? "(none)"}`,
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

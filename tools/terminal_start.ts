@@ -1,16 +1,13 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
-import {z} from "zod";
-import {TerminalState} from "../state/terminalState.ts";
+import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { z } from "zod";
+import { TerminalState } from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_start";
 const displayName = "Interactive Terminal/Start";
 
-export async function execute(
-  {command, disableSandbox}: z.output<typeof inputSchema>,
-  agent: Agent,
-): Promise<TokenRingToolResult> {
+export async function execute({ command, disableSandbox }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
   const terminalService = agent.requireServiceByType(TerminalService);
 
   const confirmed = await agent.askForApproval({
@@ -29,16 +26,12 @@ export async function execute(
     attachToAgent: agent,
     providerName: terminalService.requireActiveProviderName(agent),
     workingDirectory,
-    isolation: disableSandbox
-      ? "none"
-      : activeTerminalProvider.supportedIsolationLevels.includes("sandbox")
-        ? "sandbox"
-        : "none",
+    isolation: disableSandbox ? "none" : activeTerminalProvider.supportedIsolationLevels.includes("sandbox") ? "sandbox" : "none",
   });
 
   await terminalService.sendInput(terminalName, command);
 
-  const {interactiveConfig} = agent.getState(TerminalState);
+  const { interactiveConfig } = agent.getState(TerminalState);
 
   const result = await terminalService.readOutput(terminalName, {
     fromPosition: 0,
@@ -47,8 +40,7 @@ export async function execute(
 
   const runTime = Math.floor(Date.now() - startTime);
 
-  terminalService.requireAgentRecord(terminalName, agent).lastPosition =
-    result.position;
+  terminalService.requireAgentRecord(terminalName, agent).lastPosition = result.position;
 
   return `
 $ ${command.trim()}
@@ -67,13 +59,8 @@ IMPORTANT: Only use this for the FIRST command in a new task or when you need to
 `.trim();
 
 const inputSchema = z.object({
-  command: z
-    .string()
-    .describe("Initial shell command to execute, passed to terminal via stdin"),
-  disableSandbox: z
-    .boolean()
-    .default(false)
-    .describe("Disables the sandbox, which might resolve issues with certain commands."),
+  command: z.string().describe("Initial shell command to execute, passed to terminal via stdin"),
+  disableSandbox: z.boolean().default(false).describe("Disables the sandbox, which might resolve issues with certain commands."),
 });
 
 function adjustActivation(enabled: boolean, agent: Agent) {

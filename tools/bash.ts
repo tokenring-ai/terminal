@@ -1,18 +1,15 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
-import {joinArrayable} from "@tokenring-ai/utility/array/arrayable";
+import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { joinArrayable } from "@tokenring-ai/utility/array/arrayable";
 import intelligentTruncate from "@tokenring-ai/utility/string/intelligentTruncate";
-import {z} from "zod";
-import {TerminalState} from "../state/terminalState.ts";
+import { z } from "zod";
+import { TerminalState } from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
 
 const name = "shell_bash";
 const displayName = "Shell/Bash";
 
-export async function execute(
-  {command, disableSandbox}: z.output<typeof inputSchema>,
-  agent: Agent,
-): Promise<TokenRingToolResult> {
+export async function execute({ command, disableSandbox }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
   const terminal = agent.requireServiceByType(TerminalService);
   const bashOptions = agent.getState(TerminalState).bash;
 
@@ -54,7 +51,7 @@ export async function execute(
             },
             {
               name: "Yes (Outside Sandbox)",
-              value: "Outside Sandbox"
+              value: "Outside Sandbox",
             },
             {
               name: "No",
@@ -97,18 +94,18 @@ export async function execute(
 
   switch (result.status) {
     case "success":
-    case "badExitCode": {
-      const croppedOutput = intelligentTruncate(result.output, {
-        maxLength: bashOptions.cropOutput,
-        suffix: "\n [...Results were too long, truncated...]",
-      }).trim();
+    case "badExitCode":
+      {
+        const croppedOutput = intelligentTruncate(result.output, {
+          maxLength: bashOptions.cropOutput,
+          suffix: "\n [...Results were too long, truncated...]",
+        }).trim();
 
-      resultText += `${croppedOutput}\n[exit: ${result.exitCode} | ${runTime}ms]`;
-    }
+        resultText += `${croppedOutput}\n[exit: ${result.exitCode} | ${runTime}ms]`;
+      }
       break;
     case "timeout":
-      resultText +=
-        "[timeout: The command took too long to complete, and timed out]";
+      resultText += "[timeout: The command took too long to complete, and timed out]";
       break;
     case "unknownError":
       resultText += `[error: ${result.error}]`;
@@ -120,22 +117,16 @@ export async function execute(
   }
 
   return {
-    summary: `${displayName} (${intelligentTruncate(command, {maxLength: 100}).trim()})`,
-    result: resultText
+    summary: `${displayName} (${intelligentTruncate(command, { maxLength: 100 }).trim()})`,
+    result: resultText,
   };
 }
 
-const description =
-  "Runs a shell command in a sandbox. Output is truncated to reasonable size.";
+const description = "Runs a shell command in a sandbox. Output is truncated to reasonable size.";
 
 const inputSchema = z.object({
   command: z.string().describe("The shell command to execute."),
-  disableSandbox: z
-    .boolean()
-    .default(false)
-    .describe(
-      "Disables the sandbox, which might resolve issues with certain commands.",
-    ),
+  disableSandbox: z.boolean().default(false).describe("Disables the sandbox, which might resolve issues with certain commands."),
 });
 
 export default {

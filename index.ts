@@ -6,4 +6,4 @@ export type {
   SessionStatus,
   TerminalProvider,
 } from "./TerminalProvider.ts";
-export {default as TerminalService} from "./TerminalService.ts";
+export { default as TerminalService } from "./TerminalService.ts";

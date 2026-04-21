@@ -1,16 +1,16 @@
+import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {AgentCreationContext} from "@tokenring-ai/agent/types";
-import type {TokenRingService} from "@tokenring-ai/app/types";
+import type { AgentCreationContext } from "@tokenring-ai/agent/types";
+import type { TokenRingService } from "@tokenring-ai/app/types";
 import deepMerge from "@tokenring-ai/utility/object/deepMerge";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
-import {generateHumanId} from "@tokenring-ai/utility/string/generateHumanId";
-import type {MaybePromise} from "bun";
-import path from "node:path";
-import {setTimeout as delay} from "node:timers/promises";
-import type {z} from "zod";
-import {TerminalAgentConfigSchema, type TerminalConfigSchema} from "./schema.ts";
-import {TerminalState} from "./state/terminalState.ts";
-import type {ExecuteCommandOptions, ExecuteCommandResult, TerminalIsolationLevel, TerminalProvider} from "./TerminalProvider.ts";
+import { generateHumanId } from "@tokenring-ai/utility/string/generateHumanId";
+import type { MaybePromise } from "bun";
+import type { z } from "zod";
+import { TerminalAgentConfigSchema, type TerminalConfigSchema } from "./schema.ts";
+import { TerminalState } from "./state/terminalState.ts";
+import type { ExecuteCommandOptions, ExecuteCommandResult, TerminalIsolationLevel, TerminalProvider } from "./TerminalProvider.ts";
 
 type TerminalConnection = {
   lastPosition: number;
@@ -59,38 +59,24 @@ export default class TerminalService implements TokenRingService {
   getAllTerminalSessions = this.terminalSessionRegistry.entriesArray;
 
   constructor(private options: z.output<typeof TerminalConfigSchema>) {
-    this.dangerousCommands = options.dangerousCommands.map(
-      (command) => new RegExp(command, "is"),
-    );
+    this.dangerousCommands = options.dangerousCommands.map(command => new RegExp(command, "is"));
   }
 
   start(_signal?: AbortSignal): void {
-    this.terminalProviderRegistry.require(
-      this.options.agentDefaults.provider,
-    );
+    this.terminalProviderRegistry.require(this.options.agentDefaults.provider);
   }
 
   attach(agent: Agent, creationContext: AgentCreationContext): void {
-    const config = deepMerge(
-      this.options.agentDefaults,
-      agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema),
-    );
+    const config = deepMerge(this.options.agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
     const initialState = agent.initializeState(TerminalState, config);
 
-    const providerName =
-      initialState.providerName ?? this.options.agentDefaults.provider;
-    const terminalProvider =
-      this.terminalProviderRegistry.get(providerName);
-    creationContext.items.push(
-      `Terminal Provider: ${terminalProvider?.displayName ?? "(none)"}`,
-    );
+    const providerName = initialState.providerName ?? this.options.agentDefaults.provider;
+    const terminalProvider = this.terminalProviderRegistry.get(providerName);
+    creationContext.items.push(`Terminal Provider: ${terminalProvider?.displayName ?? "(none)"}`);
   }
 
   async detach(agent: Agent): Promise<void> {
-    for (const [
-      terminalName,
-      terminalSession,
-    ] of this.terminalSessionRegistry.entriesArray()) {
+    for (const [terminalName, terminalSession] of this.terminalSessionRegistry.entriesArray()) {
       if (terminalSession.connectedAgents.has(agent.id)) {
         terminalSession.connectedAgents.delete(agent.id);
       }
@@ -101,27 +87,21 @@ export default class TerminalService implements TokenRingService {
   }
 
   requireActiveProviderName(agent: Agent): string {
-    const {providerName} = agent.getState(TerminalState);
-    if (!providerName)
-      throw new Error("No terminal provider configured for agent");
+    const { providerName } = agent.getState(TerminalState);
+    if (!providerName) throw new Error("No terminal provider configured for agent");
     return providerName;
   }
 
   requireActiveProvider(agent: Agent): TerminalProvider {
-    return this.terminalProviderRegistry.require(
-      this.requireActiveProviderName(agent),
-    );
+    return this.terminalProviderRegistry.require(this.requireActiveProviderName(agent));
   }
 
   setActiveProvider(providerName: string, agent: Agent): void {
-    const newProvider =
-      this.terminalProviderRegistry.require(providerName);
+    const newProvider = this.terminalProviderRegistry.require(providerName);
     agent.mutateState(TerminalState, (state: TerminalState) => {
       state.providerName = providerName;
     });
-    agent.infoMessage(
-      `Terminal provider changed to ${newProvider.displayName}`,
-    );
+    agent.infoMessage(`Terminal provider changed to ${newProvider.displayName}`);
   }
 
   getWorkingDirectory(agent: Agent): string {
@@ -129,25 +109,19 @@ export default class TerminalService implements TokenRingService {
   }
 
   requireAgentRecord(terminalName: string, agent: Agent) {
-    const session =
-      this.terminalSessionRegistry.require(terminalName);
+    const session = this.terminalSessionRegistry.require(terminalName);
     const record = session.connectedAgents.get(agent.id);
     if (!record) {
-      throw new Error(
-        `Agent ${agent.id} is not connected to terminal ${terminalName}`,
-      );
+      throw new Error(`Agent ${agent.id} is not connected to terminal ${terminalName}`);
     }
     return record;
   }
 
   connectAgentToSession(terminal: TerminalSessionRecord, agent: Agent): void {
-    terminal.connectedAgents.set(agent.id, {lastPosition: 0});
+    terminal.connectedAgents.set(agent.id, { lastPosition: 0 });
   }
 
-  async disconnectAgentFromSession(
-    terminalName: string,
-    agent: Agent,
-  ): Promise<{ deleted: boolean }> {
+  async disconnectAgentFromSession(terminalName: string, agent: Agent): Promise<{ deleted: boolean }> {
     const session = this.terminalSessionRegistry.get(terminalName);
     if (!session) {
       throw new Error(`Terminal '${terminalName}' not found`);
@@ -157,21 +131,13 @@ export default class TerminalService implements TokenRingService {
     if (session.connectedAgents.size === 0) {
       await this.closeSession(terminalName);
     }
-    return {deleted};
+    return { deleted };
   }
 
-  async createSession({
-                        providerName,
-                        workingDirectory,
-                        isolation,
-                        attachToAgent,
-                      }: SpawnTerminalOptions): Promise<string> {
-    const provider =
-      this.terminalProviderRegistry.require(providerName);
+  async createSession({ providerName, workingDirectory, isolation, attachToAgent }: SpawnTerminalOptions): Promise<string> {
+    const provider = this.terminalProviderRegistry.require(providerName);
     if (!provider.isInteractive) {
-      throw new Error(
-        `Provider '${providerName}' does not support interactive sessions`,
-      );
+      throw new Error(`Provider '${providerName}' does not support interactive sessions`);
     }
 
     const providerSessionId = await provider.startInteractiveSession({
@@ -201,34 +167,21 @@ export default class TerminalService implements TokenRingService {
     const terminal = this.requireSession(terminalName);
     const provider = this.requireProviderByName(terminal.providerName);
     if (!provider.isInteractive) {
-      throw new Error(
-        `Provider '${terminal.providerName}' does not support interactive sessions`,
-      );
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
     }
 
     terminal.lastInput = input;
     await provider.sendInput(terminal.providerSessionId, input);
   }
 
-  async readOutput(
-    terminalName: string,
-    options: RetrieveTerminalOutputOptions,
-  ): Promise<{ output: string; position: number; complete: boolean }> {
+  async readOutput(terminalName: string, options: RetrieveTerminalOutputOptions): Promise<{ output: string; position: number; complete: boolean }> {
     const terminal = this.requireSession(terminalName);
     const provider = this.requireProviderByName(terminal.providerName);
     if (!provider.isInteractive) {
-      throw new Error(
-        `Provider '${terminal.providerName}' does not support interactive sessions`,
-      );
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
     }
 
-    const {
-      fromPosition,
-      minInterval,
-      settleInterval,
-      maxInterval,
-      cropOutput,
-    } = options;
+    const { fromPosition, minInterval, settleInterval, maxInterval, cropOutput } = options;
 
     await delay(minInterval * 1000);
 
@@ -236,9 +189,7 @@ export default class TerminalService implements TokenRingService {
     let lastCheckTime = Date.now();
     let lastOutputLength = fromPosition;
 
-    const initialStatus = provider.getSessionStatus?.(
-      terminal.providerSessionId,
-    );
+    const initialStatus = provider.getSessionStatus?.(terminal.providerSessionId);
     if (initialStatus && initialStatus.outputLength > lastOutputLength) {
       lastOutputLength = initialStatus.outputLength;
       lastCheckTime = Date.now();
@@ -261,15 +212,11 @@ export default class TerminalService implements TokenRingService {
       await delay(100);
     }
 
-    const result = await provider.collectOutput(
-      terminal.providerSessionId,
-      fromPosition,
-      {
-        minInterval,
-        settleInterval,
-        maxInterval,
-      },
-    );
+    const result = await provider.collectOutput(terminal.providerSessionId, fromPosition, {
+      minInterval,
+      settleInterval,
+      maxInterval,
+    });
 
     let output = result.output;
     if (cropOutput && output.length > cropOutput) {
@@ -287,9 +234,7 @@ export default class TerminalService implements TokenRingService {
     const terminal = this.requireSession(terminalName);
     const provider = this.requireProviderByName(terminal.providerName);
     if (!provider.isInteractive) {
-      throw new Error(
-        `Provider '${terminal.providerName}' does not support interactive sessions`,
-      );
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
     }
     const result = await provider.collectOutput(terminal.providerSessionId, 0, {
       minInterval: 0,
@@ -304,61 +249,34 @@ export default class TerminalService implements TokenRingService {
     const terminal = this.requireSession(terminalName);
     const provider = this.requireProviderByName(terminal.providerName);
     if (!provider.isInteractive) {
-      throw new Error(
-        `Provider '${terminal.providerName}' does not support interactive sessions`,
-      );
+      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
     }
 
     await provider.terminateSession(terminal.providerSessionId);
     this.terminalSessionRegistry.unregister(terminalName);
   }
 
-  resolveWorkingDirectory(
-    workingDirectory: string | undefined,
-    defaultWorkingDirectory: string,
-  ): string {
+  resolveWorkingDirectory(workingDirectory: string | undefined, defaultWorkingDirectory: string): string {
     if (workingDirectory) {
       return path.resolve(defaultWorkingDirectory, workingDirectory);
     }
     return defaultWorkingDirectory;
   }
 
-  buildExecutionOptions(
-    options: Partial<ExecuteCommandOptions>,
-    agent: Agent,
-  ): ExecuteCommandOptions {
+  buildExecutionOptions(options: Partial<ExecuteCommandOptions>, agent: Agent): ExecuteCommandOptions {
     return {
       timeoutSeconds: options.timeoutSeconds ?? 120,
       isolation: options.isolation ?? "sandbox",
-      workingDirectory: this.resolveWorkingDirectory(
-        options.workingDirectory,
-        this.getWorkingDirectory(agent),
-      ),
+      workingDirectory: this.resolveWorkingDirectory(options.workingDirectory, this.getWorkingDirectory(agent)),
     };
   }
 
-  executeCommand(
-    command: string,
-    args: string[],
-    options: Partial<ExecuteCommandOptions>,
-    agent: Agent,
-  ): MaybePromise<ExecuteCommandResult> {
-    return this.requireActiveProvider(agent).executeCommand(
-      command,
-      args,
-      this.buildExecutionOptions(options, agent),
-    );
+  executeCommand(command: string, args: string[], options: Partial<ExecuteCommandOptions>, agent: Agent): MaybePromise<ExecuteCommandResult> {
+    return this.requireActiveProvider(agent).executeCommand(command, args, this.buildExecutionOptions(options, agent));
   }
 
-  runScript(
-    script: string,
-    options: Partial<ExecuteCommandOptions>,
-    agent: Agent,
-  ): MaybePromise<ExecuteCommandResult> {
-    return this.requireActiveProvider(agent).runScript(
-      script,
-      this.buildExecutionOptions(options, agent),
-    );
+  runScript(script: string, options: Partial<ExecuteCommandOptions>, agent: Agent): MaybePromise<ExecuteCommandResult> {
+    return this.requireActiveProvider(agent).runScript(script, this.buildExecutionOptions(options, agent));
   }
 
   private requireSession(name: string): TerminalSessionRecord {
@@ -379,11 +297,7 @@ export default class TerminalService implements TokenRingService {
     const commands = this.parseCompoundCommand(shellString.toLowerCase());
     for (let command of commands) {
       command = command.trim();
-      if (
-        !this.options.safeCommands.some((pattern) =>
-          command.startsWith(pattern),
-        )
-      ) {
+      if (!this.options.safeCommands.some(pattern => command.startsWith(pattern))) {
         return "unknown";
       }
     }

@@ -1,12 +1,10 @@
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type { AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand } from "@tokenring-ai/agent/types";
 import codeBlock from "@tokenring-ai/utility/string/codeBlock";
 import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [
-    {name: "terminalName", description: "Terminal name", required: true},
-  ],
+  positionals: [{ name: "terminalName", description: "Terminal name", required: true }],
 } as const satisfies AgentCommandInputSchema;
 
 export default {
@@ -18,14 +16,7 @@ export default {
 
 /terminal output term-1`,
   inputSchema,
-  execute: async ({
-                    positionals: {terminalName},
-                    agent,
-                  }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    return codeBlock(
-      await agent
-        .requireServiceByType(TerminalService)
-        .readFullOutput(terminalName),
-    );
+  execute: async ({ positionals: { terminalName }, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
+    return codeBlock(await agent.requireServiceByType(TerminalService).readFullOutput(terminalName));
   },
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

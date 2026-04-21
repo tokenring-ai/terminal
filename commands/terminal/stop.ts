@@ -1,11 +1,9 @@
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type { AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand } from "@tokenring-ai/agent/types";
 import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [
-    {name: "terminalName", description: "Terminal name", required: true},
-  ],
+  positionals: [{ name: "terminalName", description: "Terminal name", required: true }],
 } as const satisfies AgentCommandInputSchema;
 
 export default {
@@ -17,16 +15,10 @@ export default {
 
 /terminal stop term-1`,
   inputSchema,
-  execute: async ({
-                    positionals: {terminalName},
-                    agent,
-                  }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
+  execute: async ({ positionals: { terminalName }, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
     const terminalService = agent.requireServiceByType(TerminalService);
 
-    const result = await terminalService.disconnectAgentFromSession(
-      terminalName,
-      agent,
-    );
+    const result = await terminalService.disconnectAgentFromSession(terminalName, agent);
 
     return `Terminal ${terminalName} ${result.deleted ? "detached & terminated." : "detached"}`;
   },

@@ -1,23 +1,16 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
+import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
 import markdownTable from "@tokenring-ai/utility/string/markdownTable";
-import {z} from "zod";
+import { z } from "zod";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_list";
 const displayName = "Interactive Terminal/List";
 
-export function execute(
-  _: z.output<typeof inputSchema>,
-  agent: Agent,
-): TokenRingToolResult {
+export function execute(_: z.output<typeof inputSchema>, agent: Agent): TokenRingToolResult {
   const terminalService = agent.requireServiceByType(TerminalService);
 
-  const connectedTerminals = terminalService
-    .getAllTerminalSessions()
-    .filter(([, terminalSession]) =>
-      terminalSession.connectedAgents.has(agent.id),
-    );
+  const connectedTerminals = terminalService.getAllTerminalSessions().filter(([, terminalSession]) => terminalSession.connectedAgents.has(agent.id));
 
   if (connectedTerminals.length === 0) {
     return "No attached terminals.";
@@ -28,14 +21,8 @@ export function execute(
     markdownTable(
       ["Name", "Last Input", "Uptime"],
       connectedTerminals.map(([terminalName, terminalSession]) => {
-        const uptime = Math.floor(
-          (Date.now() - terminalSession.startTime) / 1000,
-        );
-        return [
-          terminalName,
-          (terminalSession.lastInput ?? "[No Input]").substring(0, 30),
-          `${uptime}s`,
-        ];
+        const uptime = Math.floor((Date.now() - terminalSession.startTime) / 1000);
+        return [terminalName, (terminalSession.lastInput ?? "[No Input]").substring(0, 30), `${uptime}s`];
       }),
     )
   );

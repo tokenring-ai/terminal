@@ -1,21 +1,15 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
-import {z} from "zod";
+import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { z } from "zod";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_stop";
 const displayName = "Interactive Terminal/Stop";
 
-export async function execute(
-  {terminalName}: z.output<typeof inputSchema>,
-  agent: Agent,
-): Promise<TokenRingToolResult> {
+export async function execute({ terminalName }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
   const terminalService = agent.requireServiceByType(TerminalService);
 
-  const result = await terminalService.disconnectAgentFromSession(
-    terminalName,
-    agent,
-  );
+  const result = await terminalService.disconnectAgentFromSession(terminalName, agent);
 
   return `Terminal ${terminalName} ${result.deleted ? "detached & terminated." : "detached"}`;
 }

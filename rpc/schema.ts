@@ -1,7 +1,7 @@
-import {z} from "zod";
-import type {RPCSchema} from "../../rpc/types.ts";
-import {AgentNotFoundSchema} from "@tokenring-ai/agent/schema";
-import {TerminalSessionSummarySchema} from "../schema.ts";
+import { AgentNotFoundSchema } from "@tokenring-ai/agent/schema";
+import { z } from "zod";
+import type { RPCSchema } from "../../rpc/types.ts";
+import { TerminalSessionSummarySchema } from "../schema.ts";
 
 export default {
   name: "Terminal RPC",
@@ -10,7 +10,7 @@ export default {
     listTerminals: {
       type: "query",
       input: z.object({
-        agentId: z.string().optional(),
+        agentId: z.string().exactOptional(),
       }),
       result: z.object({
         terminals: z.array(TerminalSessionSummarySchema),
@@ -19,10 +19,10 @@ export default {
     spawnTerminal: {
       type: "mutation",
       input: z.object({
-        agentId: z.string().optional(),
-        providerName: z.string().optional(),
-        workingDirectory: z.string().optional(),
-        connectToAgent: z.boolean().optional(),
+        agentId: z.string().exactOptional(),
+        providerName: z.string().exactOptional(),
+        workingDirectory: z.string().exactOptional(),
+        connectToAgent: z.boolean().exactOptional(),
       }),
       result: z.object({
         terminalName: z.string(),
@@ -33,14 +33,14 @@ export default {
       input: z.object({
         agentId: z.string(),
         terminalName: z.string(),
-        fromPosition: z.number().optional(),
+        fromPosition: z.number().exactOptional(),
       }),
       result: z.discriminatedUnion("status", [
         z.object({
-          status: z.literal('success'),
+          status: z.literal("success"),
           success: z.boolean(),
         }),
-        AgentNotFoundSchema
+        AgentNotFoundSchema,
       ]),
     },
     detachTerminal: {
@@ -51,10 +51,10 @@ export default {
       }),
       result: z.discriminatedUnion("status", [
         z.object({
-          status: z.literal('success'),
+          status: z.literal("success"),
           success: z.boolean(),
         }),
-        AgentNotFoundSchema
+        AgentNotFoundSchema,
       ]),
     },
     sendInput: {
@@ -75,7 +75,7 @@ export default {
         minInterval: z.number().default(0),
         settleInterval: z.number().default(0),
         maxInterval: z.number().default(0),
-        cropOutput: z.number().optional(),
+        cropOutput: z.number().exactOptional(),
       }),
       result: z.object({
         output: z.string(),

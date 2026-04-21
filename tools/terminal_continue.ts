@@ -1,20 +1,17 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
-import {z} from "zod";
-import {TerminalState} from "../state/terminalState.ts";
+import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { z } from "zod";
+import { TerminalState } from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_continue";
 const displayName = "Interactive Terminal/Continue";
 
-export async function execute(
-  {terminalName, stdin}: z.output<typeof inputSchema>,
-  agent: Agent,
-): Promise<TokenRingToolResult> {
+export async function execute({ terminalName, stdin }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
   const terminal = agent.requireServiceByType(TerminalService);
-  const {lastPosition} = terminal.requireAgentRecord(terminalName, agent);
+  const { lastPosition } = terminal.requireAgentRecord(terminalName, agent);
 
-  const {interactiveConfig} = agent.getState(TerminalState);
+  const { interactiveConfig } = agent.getState(TerminalState);
 
   const startTime = Date.now();
   if (stdin) {
@@ -27,8 +24,7 @@ export async function execute(
 
   const runTime = Math.floor(Date.now() - startTime);
 
-  terminal.requireAgentRecord(terminalName, agent).lastPosition =
-    result.position;
+  terminal.requireAgentRecord(terminalName, agent).lastPosition = result.position;
 
   return `
 ${stdin ? `> ${stdin}` : ""}
@@ -49,7 +45,7 @@ This ensures efficient use of resources and maintains session state across multi
 
 const inputSchema = z.object({
   terminalName: z.string().describe("The terminal name"),
-  stdin: z.string().optional().describe("Input to send to the terminal."),
+  stdin: z.string().exactOptional().describe("Input to send to the terminal."),
 });
 
 function adjustActivation(enabled: boolean, agent: Agent) {

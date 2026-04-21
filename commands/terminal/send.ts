@@ -1,19 +1,13 @@
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import type { AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand } from "@tokenring-ai/agent/types";
 import TerminalService from "../../TerminalService.ts";
 
 const inputSchema = {
   args: {},
-  positionals: [
-    {name: "terminalName", description: "Terminal name", required: true},
-  ],
-  remainder: {name: "input", description: "Input to send", required: true},
+  positionals: [{ name: "terminalName", description: "Terminal name", required: true }],
+  remainder: { name: "input", description: "Input to send", required: true },
 } as const satisfies AgentCommandInputSchema;
 
-async function execute({
-                         positionals: {terminalName},
-                         remainder,
-                         agent,
-                       }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+async function execute({ positionals: { terminalName }, remainder, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const terminalService = agent.requireServiceByType(TerminalService);
 
   await terminalService.sendInput(terminalName, remainder);

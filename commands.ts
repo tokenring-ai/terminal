@@ -8,14 +8,4 @@ import send from "./commands/terminal/send.ts";
 import start from "./commands/terminal/start.ts";
 import stop from "./commands/terminal/stop.ts";
 
-export default [
-  list,
-  start,
-  send,
-  output,
-  stop,
-  providerGet,
-  providerSet,
-  providerSelect,
-  providerList,
-];
+export default [list, start, send, output, stop, providerGet, providerSet, providerSelect, providerList];

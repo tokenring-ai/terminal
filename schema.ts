@@ -2,23 +2,23 @@ import z from "zod";
 
 export const TerminalAgentConfigSchema = z
   .object({
-    provider: z.string().optional(),
-    workingDirectory: z.string().optional(),
+    provider: z.string().exactOptional(),
+    workingDirectory: z.string().exactOptional(),
     bash: z
       .object({
-        cropOutput: z.number().optional(),
-        timeoutSeconds: z.number().optional(),
-        autoApproveUnknownCommandsAfter: z.number().optional(),
+        cropOutput: z.number().exactOptional(),
+        timeoutSeconds: z.number().exactOptional(),
+        autoApproveUnknownCommandsAfter: z.number().exactOptional(),
       })
-      .optional(),
+      .exactOptional(),
     interactive: z
       .object({
-        cropOutput: z.number().optional(),
-        minInterval: z.number().optional(),
-        settleInterval: z.number().optional(),
-        maxInterval: z.number().optional(),
+        cropOutput: z.number().exactOptional(),
+        minInterval: z.number().exactOptional(),
+        settleInterval: z.number().exactOptional(),
+        maxInterval: z.number().exactOptional(),
       })
-      .optional(),
+      .exactOptional(),
   })
   .strict()
   .default({});
@@ -124,7 +124,7 @@ export const TerminalConfigSchema = z
 
 export const TerminalSessionSummarySchema = z.object({
   name: z.string(),
-  lastInput: z.string().optional(),
+  lastInput: z.string().exactOptional(),
   providerName: z.string(),
   workingDirectory: z.string(),
   startTime: z.number(),
@@ -132,12 +132,8 @@ export const TerminalSessionSummarySchema = z.object({
   outputLength: z.number(),
   exitCode: z.number().nullable(),
   connectedAgentIds: z.array(z.string()),
-  lastPosition: z.number().optional(),
+  lastPosition: z.number().exactOptional(),
 });
 
-export type TerminalSessionSummary = z.input<
-  typeof TerminalSessionSummarySchema
->;
-export type ParsedTerminalSessionSummary = z.output<
-  typeof TerminalSessionSummarySchema
->;
+export type TerminalSessionSummary = z.input<typeof TerminalSessionSummarySchema>;
+export type ParsedTerminalSessionSummary = z.output<typeof TerminalSessionSummarySchema>;

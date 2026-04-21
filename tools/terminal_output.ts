@@ -1,15 +1,12 @@
 import type Agent from "@tokenring-ai/agent/Agent";
-import type {TokenRingToolDefinition, TokenRingToolResult} from "@tokenring-ai/chat/schema";
-import {z} from "zod";
+import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { z } from "zod";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_output";
 const displayName = "Terminal/Output";
 
-export async function execute(
-  {terminalName}: z.output<typeof inputSchema>,
-  agent: Agent,
-): Promise<TokenRingToolResult> {
+export async function execute({ terminalName }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
   const terminalService = agent.requireServiceByType(TerminalService);
 
   const completeOutput = await terminalService.readFullOutput(terminalName);
