@@ -1,5 +1,6 @@
 import {z} from "zod";
 import type {RPCSchema} from "../../rpc/types.ts";
+import {AgentNotFoundSchema} from "@tokenring-ai/agent/schema";
 import {TerminalSessionSummarySchema} from "../schema.ts";
 
 export default {
@@ -34,9 +35,13 @@ export default {
         terminalName: z.string(),
         fromPosition: z.number().optional(),
       }),
-      result: z.object({
-        success: z.boolean(),
-      }),
+      result: z.discriminatedUnion("status", [
+        z.object({
+          status: z.literal('success'),
+          success: z.boolean(),
+        }),
+        AgentNotFoundSchema
+      ]),
     },
     detachTerminal: {
       type: "mutation",
@@ -44,9 +49,13 @@ export default {
         agentId: z.string(),
         terminalName: z.string(),
       }),
-      result: z.object({
-        success: z.boolean(),
-      }),
+      result: z.discriminatedUnion("status", [
+        z.object({
+          status: z.literal('success'),
+          success: z.boolean(),
+        }),
+        AgentNotFoundSchema
+      ]),
     },
     sendInput: {
       type: "mutation",

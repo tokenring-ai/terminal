@@ -47,19 +47,25 @@ export default createRPCEndpoint(TerminalRpcSchema, {
 
   attachTerminal(args, app) {
     const terminalService = app.requireService(TerminalService);
-    const agent = requireAgent(app, args.agentId);
+    const agent = app.requireService(AgentManager).getAgent(args.agentId);
+    if (!agent) {
+      return {status: 'agentNotFound'};
+    }
     const session = terminalService.getTerminalSessionByName(args.terminalName);
     if (!session) throw new Error(`Terminal '${args.terminalName}' not found`);
     terminalService.connectAgentToSession(session, agent);
-    return {success: true};
+    return {status: 'success', success: true};
   },
 
   async detachTerminal(args, app) {
-    const agent = requireAgent(app, args.agentId);
+    const agent = app.requireService(AgentManager).getAgent(args.agentId);
+    if (!agent) {
+      return {status: 'agentNotFound'};
+    }
     await app
       .requireService(TerminalService)
       .disconnectAgentFromSession(args.terminalName, agent);
-    return {success: true};
+    return {status: 'success', success: true};
   },
 
   async sendInput(args, app) {
