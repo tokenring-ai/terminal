@@ -21,7 +21,6 @@ export default {
       input: z.object({
         agentId: z.string().exactOptional(),
         providerName: z.string().exactOptional(),
-        workingDirectory: z.string().exactOptional(),
         connectToAgent: z.boolean().exactOptional(),
       }),
       result: z.object({

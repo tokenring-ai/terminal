@@ -37,7 +37,7 @@ export default createRPCEndpoint(TerminalRpcSchema, {
     const terminalService = app.requireService(TerminalService);
     const terminalName = await terminalService.createSession({
       providerName: args.providerName ?? terminalService.getAvailableProviders()[0],
-      workingDirectory: args.workingDirectory ?? ".",
+      workingDirectory: terminalService.defaultWorkingDirectory(),
       isolation: "sandbox",
       ...(args.agentId && { attachToAgent: requireAgent(app, args.agentId) }),
     });

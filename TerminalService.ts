@@ -104,6 +104,10 @@ export default class TerminalService implements TokenRingService {
     agent.infoMessage(`Terminal provider changed to ${newProvider.displayName}`);
   }
 
+  defaultWorkingDirectory() : string {
+    return this.options.agentDefaults.workingDirectory;
+  }
+
   getWorkingDirectory(agent: Agent): string {
     return path.normalize(agent.getState(TerminalState).workingDirectory);
   }
