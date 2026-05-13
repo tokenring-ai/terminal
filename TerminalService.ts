@@ -104,7 +104,7 @@ export default class TerminalService implements TokenRingService {
     agent.infoMessage(`Terminal provider changed to ${newProvider.displayName}`);
   }
 
-  defaultWorkingDirectory() : string {
+  defaultWorkingDirectory(): string {
     return this.options.agentDefaults.workingDirectory;
   }
 
@@ -283,14 +283,6 @@ export default class TerminalService implements TokenRingService {
     return this.requireActiveProvider(agent).runScript(script, this.buildExecutionOptions(options, agent));
   }
 
-  private requireSession(name: string): TerminalSessionRecord {
-    const terminal = this.terminalSessionRegistry.get(name);
-    if (!terminal) {
-      throw new Error(`Terminal ${name} not found`);
-    }
-    return terminal;
-  }
-
   getCommandSafetyLevel(shellString: string): "safe" | "unknown" | "dangerous" {
     for (const dangerousCommand of this.dangerousCommands) {
       if (dangerousCommand.test(shellString)) {
@@ -312,6 +304,14 @@ export default class TerminalService implements TokenRingService {
     const parsedCommands: string[] = [];
     this.collectCommandNames(command, parsedCommands);
     return parsedCommands;
+  }
+
+  private requireSession(name: string): TerminalSessionRecord {
+    const terminal = this.terminalSessionRegistry.get(name);
+    if (!terminal) {
+      throw new Error(`Terminal ${name} not found`);
+    }
+    return terminal;
   }
 
   private collectCommandNames(command: string, parsedCommands: string[]): void {

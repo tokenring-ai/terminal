@@ -1,10 +1,12 @@
 # @tokenring-ai/terminal
 
-Terminal and shell command execution service for Token Ring AI agents.
+Service for managing interactive shell sessions and executing system commands.
 
-## Overview
+## Package Overview
 
-The `@tokenring-ai/terminal` package provides a unified interface for executing shell commands with safety validation and provider-based architecture. It enables agents to execute shell commands safely with configurable timeouts, output truncation, and command safety validation.
+The `@tokenring-ai/terminal` package provides a unified interface for executing shell commands with safety validation
+and provider-based architecture. It enables agents to execute shell commands safely with configurable timeouts, output
+truncation, and command safety validation.
 
 ### Key Features
 
@@ -21,6 +23,7 @@ The `@tokenring-ai/terminal` package provides a unified interface for executing 
 - **Configurable wait intervals** for output collection (minInterval, settleInterval, maxInterval)
 - **Position-based output tracking** for incremental reads
 - **Chat command interface** with `/terminal` command for manual session management
+- **RPC endpoints** for external terminal management
 
 ## Installation
 
@@ -40,7 +43,6 @@ bun install @tokenring-ai/terminal
 
 ### Development Dependencies
 
-- `@vitest/coverage-v8` (^4.1.1) - Test coverage
 - `vitest` (^4.1.1) - Testing framework
 - `typescript` (^6.0.2) - TypeScript compiler
 
@@ -54,170 +56,209 @@ The main service class that manages terminal operations and command execution.
 
 **Properties:**
 
-- `name: string` - Service name
+- `name: string` - Service name ("TerminalService")
 - `description: string` - Service description
-- `defaultProvider: TerminalProvider` - Default terminal provider instance
 - `terminalProviderRegistry: KeyedRegistry<TerminalProvider>` - Registry for terminal providers
+- `terminalSessionRegistry: KeyedRegistry<TerminalSessionRecord>` - Registry for terminal sessions
 
 **Methods:**
 
 - `start(signal?: AbortSignal): void`
-  - Lifecycle method called by the application to initialize the service
-  - Sets up the default terminal provider from configuration
+- Lifecycle method called by the application to initialize the service
+- Sets up the default terminal provider from configuration
 
 - `attach(agent: Agent, creationContext: AgentCreationContext): void`
-  - Attaches the service to an agent
-  - Merges agent-specific terminal configuration with defaults
-  - Initializes the agent's TerminalState slice
-  - Adds terminal provider info to creation context
+- Attaches the service to an agent
+- Merges agent-specific terminal configuration with defaults
+- Initializes the agent's TerminalState slice
+- Adds terminal provider info to creation context
 
-- `executeCommand(command: string, args: string[], options: Partial<ExecuteCommandOptions>, agent: Agent): Promise<ExecuteCommandResult>`
-  - Execute a shell command
-  - Parameters:
-    - `command`: Shell command to execute
-    - `args`: Command arguments
-    - `options`: Execution options (timeout, workingDirectory, env, input)
-    - `agent`: Agent instance
-  - Returns: Command execution result
+- `detach(agent: Agent): Promise<void>`
+- Detaches the service from an agent
+- Disconnects the agent from all sessions
+- Closes sessions when no agents are connected
 
-- `runScript(script: string, options: Partial<ExecuteCommandOptions>, agent: Agent): Promise<ExecuteCommandResult>`
-  - Execute a shell script
-  - Parameters:
-    - `script`: Shell script to execute
-    - `options`: Execution options
-    - `agent`: Agent instance
-  - Returns: Command execution result
+- `requireActiveProvider(agent: Agent): TerminalProvider`
+- Get the active terminal provider for an agent
+- Parameters:
+- `agent`: Agent instance
+- Returns: TerminalProvider instance
+- Throws: Error if no terminal provider configured
 
-- `startInteractiveSession(agent: Agent, command: string): Promise<string>`
-  - Start a new interactive terminal session
-  - Parameters:
-    - `agent`: Agent instance
-    - `command`: Initial command to execute
-  - Returns: Session ID
+- `requireActiveProviderName(agent: Agent): string`
+- Get the active terminal provider name for an agent
+- Parameters:
+- `agent`: Agent instance
+- Returns: Provider name string
 
-- `sendInputToSession(sessionId: string, input: string, agent: Agent): Promise<void>`
-  - Send input to a running terminal session
-  - Parameters:
-    - `sessionId`: Terminal session ID
-    - `input`: Input to send to the terminal
-    - `agent`: Agent instance
+- `setActiveProvider(providerName: string, agent: Agent): void`
+- Set the active terminal provider for an agent
+- Parameters:
+- `providerName`: Name of the terminal provider
+- `agent`: Agent instance
+- Throws: Error if provider doesn't exist
 
-- `retrieveSessionOutput(sessionId: string, agent: Agent): Promise<{ output: string; position: number; complete: boolean }>`
-  - Retrieve output from a terminal session with automatic waiting strategy
-  - Parameters:
-    - `sessionId`: Terminal session ID
-    - `agent`: Agent instance
-  - Returns: Output, position, and completion status
+- `defaultWorkingDirectory(): string`
+- Get the default working directory
+- Returns: Default working directory path
 
-- `getCompleteSessionOutput(sessionId: string, agent: Agent): Promise<string>`
-  - Get the complete output from a terminal session without waiting
-  - Parameters:
-    - `sessionId`: Terminal session ID
-    - `agent`: Agent instance
-  - Returns: Complete output string
+- `getWorkingDirectory(agent: Agent): string`
+- Get the working directory for an agent
+- Parameters:
+- `agent`: Agent instance
+- Returns: Working directory path
 
-- `terminateSession(sessionId: string, agent: Agent): Promise<void>`
-  - Terminate a terminal session
-  - Parameters:
-    - `sessionId`: Terminal session ID
-    - `agent`: Agent instance
+- `createSession(options: SpawnTerminalOptions): Promise<string>`
+- Create a new terminal session
+- Parameters:
+- `providerName`: Terminal provider name
+- `workingDirectory`: Working directory for the session
+- `isolation`: Isolation level (none, sandbox, container)
+- `attachToAgent`: Optional agent to attach to
+- Returns: Session name/ID
+
+- `sendInput(terminalName: string, input: string): Promise<void>`
+- Send input to a terminal session
+- Parameters:
+- `terminalName`: Terminal session name
+- `input`: Input to send
+
+-
+
+`readOutput(terminalName: string, options: RetrieveTerminalOutputOptions): Promise<{ output: string; position: number; complete: boolean }>`
+
+- Read output from a terminal session with waiting strategy
+- Parameters:
+- `terminalName`: Terminal session name
+- `options`: Output retrieval options
+- Returns: Output, position, and completion status
+
+- `readFullOutput(terminalName: string): Promise<string>`
+- Get the complete output from a terminal session
+- Parameters:
+- `terminalName`: Terminal session name
+- Returns: Complete output string
+
+- `closeSession(terminalName: string): Promise<void>`
+- Close a terminal session
+- Parameters:
+- `terminalName`: Terminal session name
+
+-
+
+`executeCommand(command: string, args: string[], options: Partial<ExecuteCommandOptions>, agent: Agent): ExecuteCommandResult`
+
+- Execute a shell command
+- Parameters:
+- `command`: Shell command to execute
+- `args`: Command arguments
+- `options`: Execution options
+- `agent`: Agent instance
+- Returns: Command execution result
+
+- `runScript(script: string, options: Partial<ExecuteCommandOptions>, agent: Agent): ExecuteCommandResult`
+- Execute a shell script
+- Parameters:
+- `script`: Shell script to execute
+- `options`: Execution options
+- `agent`: Agent instance
+- Returns: Command execution result
 
 - `getCommandSafetyLevel(shellString: string): "safe" | "unknown" | "dangerous"`
-  - Determine if a command is safe to execute
-  - Parameters:
-    - `shellString`: Shell command string
-  - Returns: Safety level (safe, unknown, dangerous)
+- Determine if a command is safe to execute
+- Parameters:
+- `shellString`: Shell command string
+- Returns: Safety level (safe, unknown, dangerous)
 
 - `parseCompoundCommand(command: string): string[]`
-  - Parse compound commands into individual commands
-  - Supports separators: &&, ||, ;, |
-  - Parameters:
-    - `command`: Shell command string
-  - Returns: Array of individual command names
-
-- `requireActiveTerminal(agent: Agent): TerminalProvider`
-  - Get the active terminal provider for an agent
-  - Parameters:
-    - `agent`: Agent instance
-  - Returns: TerminalProvider instance
-  - Throws: Error if no terminal provider configured
-
-- `setActiveTerminal(providerName: string, agent: Agent): void`
-  - Set the active terminal provider for an agent
-  - Parameters:
-    - `providerName`: Name of the terminal provider
-    - `agent`: Agent instance
-  - Throws: Error if provider doesn't exist
+- Parse compound commands into individual commands
+- Supports separators: &&, ||, ;, |
+- Parameters:
+- `command`: Shell command string
+- Returns: Array of individual command names
 
 - `registerTerminalProvider(name: string, provider: TerminalProvider): void`
-  - Register a new terminal provider
-  - Parameters:
-    - `name`: Unique provider name
-    - `provider`: TerminalProvider instance
+- Register a new terminal provider
+- Parameters:
+- `name`: Unique provider name
+- `provider`: TerminalProvider instance
 
-- `requireTerminalProviderByName(name: string): TerminalProvider`
-  - Retrieve a terminal provider by name
-  - Parameters:
-    - `name`: Provider name
-  - Returns: TerminalProvider instance
-  - Throws: Error if provider doesn't exist
+- `unregisterTerminalProvider(name: string): void`
+- Unregister a terminal provider
+- Parameters:
+- `name`: Provider name
+
+- `requireProviderByName(name: string): TerminalProvider`
+- Retrieve a terminal provider by name
+- Parameters:
+- `name`: Provider name
+- Returns: TerminalProvider instance
+- Throws: Error if provider doesn't exist
 
 - `getAvailableProviders(): string[]`
-  - Get all available provider names
-  - Returns: Array of provider names
+- Get all available provider names
+- Returns: Array of provider names
+
+- `getTerminalSessionByName(name: string): TerminalSessionRecord | undefined`
+- Get a terminal session by name
+- Parameters:
+- `name`: Session name
+- Returns: Session record or undefined
+
+- `getAllTerminalSessions(): [string, TerminalSessionRecord][]`
+- Get all terminal sessions
+- Returns: Array of [name, session] tuples
 
 ### Providers
 
 #### TerminalProvider
 
-Interface for terminal provider implementations.
+Interface for terminal provider implementations. Split into base and interactive variants.
 
-**Interface:**
+**BaseTerminalProvider:**
 
 ```typescript
-interface TerminalProvider {
-  executeCommand(
-    command: string,
-    args: string[],
-    options: ExecuteCommandOptions,
-  ): Promise<ExecuteCommandResult>;
+interface BaseTerminalProvider {
+  displayName: string;
+  supportedIsolationLevels: TerminalIsolationLevel[];
 
-  runScript(
-    script: string,
-    options: ExecuteCommandOptions,
-  ): Promise<ExecuteCommandResult>;
-
-  startInteractiveSession(
-    options: ExecuteCommandOptions
-  ): Promise<string>;
-
-  sendInput(
-    sessionId: string,
-    input: string
-  ): Promise<void>;
-
-  collectOutput(
-    sessionId: string,
-    fromPosition: number,
-    waitOptions: OutputWaitOptions
-  ): Promise<InteractiveTerminalOutput>;
-
-  terminateSession(
-    sessionId: string
-  ): Promise<void>;
-
-  getSessionStatus(
-    sessionId: string
-  ): SessionStatus | null;
-
-  getIsolationLevel(): TerminalIsolationLevel;
+  executeCommand(command: string, args: string[], options: ExecuteCommandOptions): MaybePromise<ExecuteCommandResult>;
+  runScript(script: string, options: ExecuteCommandOptions): MaybePromise<ExecuteCommandResult>;
 }
+```
+
+**NonInteractiveTerminalProvider:**
+
+```typescript
+interface NonInteractiveTerminalProvider extends BaseTerminalProvider {
+  isInteractive: false;
+}
+```
+
+**InteractiveTerminalProvider:**
+
+```typescript
+interface InteractiveTerminalProvider extends BaseTerminalProvider {
+  isInteractive: true;
+
+  startInteractiveSession(options: InteractiveTerminalOptions): MaybePromise<string>;
+  sendInput(sessionId: string, input: string): MaybePromise<void>;
+  collectOutput(sessionId: string, fromPosition: number, waitOptions: OutputWaitOptions): MaybePromise<InteractiveTerminalOutput>;
+  terminateSession(sessionId: string): MaybePromise<void>;
+  getSessionStatus(sessionId: string): SessionStatus | null;
+}
+```
+
+**TerminalProvider:**
+
+```typescript
+type TerminalProvider = NonInteractiveTerminalProvider | InteractiveTerminalProvider;
 ```
 
 **TerminalIsolationLevel:**
 
 ```typescript
-type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
+type TerminalIsolationLevel = "none" | "sandbox" | "container";
 ```
 
 - `'none'` - No isolation, commands run directly on the host
@@ -229,37 +270,28 @@ type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
 ```typescript
 interface ExecuteCommandOptions {
   timeoutSeconds: number;
-  env?: Record<string, string | undefined>;
-  workingDirectory?: string;
+  workingDirectory: string;
+  isolation: TerminalIsolationLevel;
 }
 ```
 
 **ExecuteCommandResult:**
 
 ```typescript
-type ExecuteCommandResult = {
-  status: "success",
-  output: string,
-  exitCode: 0,
-} | {
-  status: "badExitCode",
-  output: string,
-  exitCode: number,
-} | {
-  status: "timeout",
-} | {
-  status: "unknownError",
-  error: string,
-};
+type ExecuteCommandResult =
+  | { status: "success"; output: string; exitCode: 0 }
+  | { status: "badExitCode"; output: string; exitCode: number }
+  | { status: "timeout" }
+  | { status: "unknownError"; error: string };
 ```
 
 **OutputWaitOptions:**
 
 ```typescript
 interface OutputWaitOptions {
-  minInterval: number;     // Minimum time to wait before checking output (seconds)
-  settleInterval: number;  // Time of output inactivity before responding (seconds)
-  maxInterval: number;     // Maximum time to wait before forcing response (seconds)
+  minInterval: number;      // Minimum time to wait before checking output (seconds)
+  settleInterval: number;   // Time of output inactivity before responding (seconds)
+  maxInterval: number;      // Maximum time to wait before forcing response (seconds)
 }
 ```
 
@@ -286,42 +318,48 @@ interface SessionStatus {
 }
 ```
 
+**TerminalSessionRecord:**
+
+```typescript
+interface TerminalSessionRecord {
+  name: string;
+  lastInput?: string;
+  providerName: string;
+  providerSessionId: string;
+  workingDirectory: string;
+  startTime: number;
+  connectedAgents: Map<string, TerminalConnection>;
+}
+```
+
+**TerminalConnection:**
+
+```typescript
+interface TerminalConnection {
+  lastPosition: number;
+}
+```
+
 ## State Management
 
 ### TerminalState
 
-Agent state slice for terminal-specific configuration and persistent sessions.
+Agent state slice for terminal-specific configuration.
 
 **Properties:**
 
-- `providerName: string | null` - Active terminal provider name
+- `providerName: string` - Active terminal provider name
 - `workingDirectory: string` - Current working directory for commands
-- `bash: { cropOutput: number, timeoutSeconds: number }` - Bash execution options
-- `interactiveConfig: { minInterval: number, settleInterval: number, maxInterval: number }` - Output collection intervals
-- `sessions: Map<string, SessionRecord>` - Active terminal sessions
-
-**SessionRecord:**
-
-```typescript
-interface SessionRecord {
-  id: string;
-  command: string;
-  lastPosition: number;
-  startTime: number;
-  running: boolean;
-}
-```
+- `bash: { cropOutput: number, timeoutSeconds: number, autoApproveUnknownCommandsAfter: number }` - Bash execution
+  options
+- `interactiveConfig: { cropOutput: number, minInterval: number, settleInterval: number, maxInterval: number }` - Output
+  collection intervals
 
 **Methods:**
 
-- `registerSession(id: string, command: string): void` - Register a new session
-- `updateSessionPosition(id: string, position: number): void` - Update session position
-- `getSession(id: string): SessionRecord | undefined` - Get session by ID
-- `removeSession(id: string): void` - Remove session from state
-- `listSessions(): SessionRecord[]` - List all sessions
 - `serialize(): z.output<typeof serializationSchema>` - Serialize state
 - `deserialize(data: z.output<typeof serializationSchema>): void` - Deserialize state
-- `show(): string[]` - Display state information
+- `show(): string` - Display state information
 
 ## Tools
 
@@ -332,25 +370,27 @@ Tool for executing shell commands through the agent interface.
 **Parameters:**
 
 - `command`: The shell command to execute (string)
+- `disableSandbox`: Disables the sandbox, which might resolve issues with certain commands (boolean, default: false)
 
 **Behavior:**
 
 1. Validates command is present
 2. Checks command safety level
-3. If unknown, prompts user for confirmation (10-second timeout)
-4. If dangerous, prompts user for confirmation (no timeout)
+3. If unknown, prompts user for confirmation with timeout (autoApproveUnknownCommandsAfter, default 30s)
+4. If dangerous, prompts user for confirmation without timeout
 5. Executes command with configured timeout
 6. Truncates output if exceeds crop limit
 7. Returns formatted result with exit code and output
 
-**Safety Confirmation:**
+**Safety Approval Options:**
 
-- Unknown commands: Requires user confirmation with 10-second timeout
-- Dangerous commands: Requires user confirmation without timeout
+- "In Sandbox" - Execute in sandboxed environment (default)
+- "Outside Sandbox" - Execute without sandbox (requires approval)
+- "Not approved" - Cancel execution
 
 **Example Output:**
 
-```
+```text
 $ ls -la
 total 48
 drwxr-xr-x  5 user  staff   160 Jan 1 12:00 .
@@ -365,27 +405,32 @@ Tool for starting persistent terminal sessions.
 
 **Parameters:**
 
-- `command`: The shell command to execute (string)
+- `command`: Initial shell command to execute, passed to terminal via stdin (string)
+- `disableSandbox`: Disables the sandbox, which might resolve issues with certain commands (boolean, default: false)
 
 **Behavior:**
 
-1. Validates command and checks safety level
-2. Starts a persistent terminal session
-3. Waits for initial output using configured intervals
-4. Returns session ID, output, and position marker
+1. Requires user approval for sandboxed or unsandboxed execution
+2. Creates a new terminal session
+3. Sends the command to the terminal
+4. Waits for initial output using configured intervals
+5. Returns output, position, and session status
 
 **Example Output:**
 
-```
-Terminal Session Started
-Terminal Id: term-1
-Sent Command: npm run dev
-
-Output:
+```text
+$ npm run dev
+---
 Server starting on port 3000...
+---
+[234ms]
+Terminal is still running. Use terminal_continue with terminalName: term-1 to continue interacting with the terminal, and stop the terminal with terminal_stop once you are done using it.
 ```
 
-**Important:** Only use this for the FIRST command in a new task or when you need to start fresh, or when you intentionally want to leave an existing terminal running. Always try to reuse existing terminal sessions (by using terminal_continue with the provided sessionId) for subsequent commands within the same task. Do not create multiple terminal sessions for a single task unless explicitly necessary.
+**Important:** Only use this for the FIRST command in a new task or when you need to start fresh, or when you
+intentionally want to leave an existing terminal running. Always try to reuse existing terminal sessions (by using
+terminal_continue with the provided terminalName) for subsequent commands within the same task. Do not create multiple
+terminal sessions for a single task unless explicitly necessary.
 
 ### terminal_continue
 
@@ -393,7 +438,7 @@ Tool for continuing interaction with persistent terminal sessions.
 
 **Parameters:**
 
-- `sessionId`: The terminal session ID (string)
+- `terminalName`: The terminal name (string)
 - `stdin`: Input to send to the terminal (optional string)
 
 **Behavior:**
@@ -406,15 +451,18 @@ Tool for continuing interaction with persistent terminal sessions.
 
 **Example Output:**
 
-```
-Terminal Session: term-1
+```text
+> npm install
+---
+added 142 packages in 3s
+---
 
-Output:
-Server started on port 3000
-Listening for requests...
+[123ms]
+Terminal is still running
 ```
 
-**Important:** ALWAYS use this tool instead of terminal_start for follow-up commands within the same task. This ensures efficient use of resources and maintains session state across multiple commands.
+**Important:** ALWAYS use this tool instead of terminal_start for follow-up commands within the same task. This ensures
+efficient use of resources and maintains session state across multiple commands.
 
 ### terminal_stop
 
@@ -422,17 +470,17 @@ Tool for terminating persistent terminal sessions.
 
 **Parameters:**
 
-- `sessionId`: The terminal session ID to terminate (string)
+- `terminalName`: The terminal name to terminate (string)
 
 **Behavior:**
 
-1. Terminates the process
-2. Removes session from state
+1. Disconnects the agent from the session
+2. If no agents are connected, terminates the session
 
 **Example Output:**
 
-```
-Terminal session term-1 terminated.
+```text
+Terminal term-1 detached & terminated.
 ```
 
 ### terminal_list
@@ -443,12 +491,12 @@ Tool for listing all active persistent terminal sessions.
 
 **Example Output:**
 
-```
-Active Terminal Sessions:
-ID           | Command                        | Position | Running | Uptime
--------------|--------------------------------|----------|---------|--------
-term-1       | npm run dev                    | 1024     | Yes     | 45s
-term-2       | python server.py               | 2048     | Yes     | 120s
+```text
+Attached Terminals:
+Name          | Last Input                     | Uptime | Attached Agents
+--------------|--------------------------------|--------|----------------
+term-1        | npm run dev                    | 45s    | agent-123
+term-2        | python server.py               | 120s   | agent-456
 ```
 
 ### terminal_output
@@ -457,7 +505,7 @@ Tool for getting the complete output from a terminal session without truncation.
 
 **Parameters:**
 
-- `sessionId`: The terminal session ID (string)
+- `terminalName`: The terminal name (string)
 
 **Behavior:**
 
@@ -467,7 +515,7 @@ Tool for getting the complete output from a terminal session without truncation.
 
 **Example Output:**
 
-```
+```text
 Terminal Session: term-1
 Complete Output:
 [complete output without truncation]
@@ -483,28 +531,28 @@ The `/terminal` command provides a manual interface for managing terminal sessio
 
 **Syntax:**
 
-```
+```bash
 /terminal [action] [subaction] [arguments]
 ```
 
 #### Session Management
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `list` | List all active terminal sessions | `/terminal list` |
-| `start <command>` | Start a new terminal session | `/terminal start npm run dev` |
-| `send <sessionId> <input>` | Send input to a session | `/terminal send term-1 y` |
-| `output <sessionId>` | Get complete output without truncation | `/terminal output term-1` |
-| `stop <sessionId>` | Terminate a session | `/terminal stop term-1` |
+| Command               | Description                            | Example                       |
+|-----------------------|----------------------------------------|-------------------------------|
+| `list`                | List all active terminal sessions      | `/terminal list`              |
+| `start <command>`     | Start a new terminal session           | `/terminal start npm run dev` |
+| `send <name> <input>` | Send input to a session                | `/terminal send term-1 y`     |
+| `output <name>`       | Get complete output without truncation | `/terminal output term-1`     |
+| `stop <name>`         | Terminate a session                    | `/terminal stop term-1`       |
 
 #### Provider Management
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `provider get` | Display current provider | `/terminal provider get` |
-| `provider select` | Select provider interactively | `/terminal provider select` |
-| `provider set <name>` | Set provider by name | `/terminal provider set local` |
-| `provider list` | List all providers | `/terminal provider list` |
+| Command               | Description                   | Example                        |
+|-----------------------|-------------------------------|--------------------------------|
+| `provider get`        | Display current provider      | `/terminal provider get`       |
+| `provider select`     | Select provider interactively | `/terminal provider select`    |
+| `provider set <name>` | Set provider by name          | `/terminal provider set local` |
+| `provider list`       | List all providers            | `/terminal provider list`      |
 
 **Examples:**
 
@@ -529,24 +577,24 @@ const config = {
   terminal: {
     agentDefaults: {
       provider: 'local',
+      workingDirectory: '.',
       bash: {
         cropOutput: 10000,
-        timeoutSeconds: 60
+        timeoutSeconds: 60,
+        autoApproveUnknownCommandsAfter: 30
       },
       interactive: {
-        minInterval: 1,      // Minimum wait before checking output (seconds)
-        settleInterval: 2,   // Inactivity time before responding (seconds)
-        maxInterval: 30      // Maximum wait time (seconds)
+        cropOutput: 10000,
+        minInterval: 1,
+        settleInterval: 2,
+        maxInterval: 30
       }
     },
-    providers: {
-      local: { type: 'local' }
-    },
     safeCommands: [
-      'awk', 'cat', 'cd', 'chdir', 'diff', 'echo', 'find', 'git', 'grep', 'head', 'help',
+      'awk', 'sed', 'cat', 'cd', 'chdir', 'diff', 'echo', 'find', 'git', 'grep', 'head', 'help',
       'hostname', 'id', 'ipconfig', 'tee', 'ls', 'netstat', 'ps', 'pwd', 'sort', 'tail',
       'tree', 'type', 'uname', 'uniq', 'wc', 'which', 'touch', 'mkdir', 'npm', 'yarn',
-      'bun', 'tsc', 'node', 'npx', 'bunx', 'vitest'
+      'bun', 'tsc', 'npx', 'bunx', 'vitest'
     ],
     dangerousCommands: [
       "(^|\\s)dd\\s",
@@ -560,7 +608,14 @@ const config = {
       "(^|\\s)format\\s",
       "(^|\\s)reboot",
       "(^|\\s)shutdown",
-      "git.*reset"
+      "(^|\\s)python",
+      "(^|\\s)perl",
+      "(^|\\s)node",
+      "(^|\\s)bash",
+      "(^|\\s)sh\\s",
+      "(^|\\s)curl",
+      "(^|\\s)wget",
+      "git.*(push|reset)"
     ]
   }
 };
@@ -575,7 +630,17 @@ import { TerminalConfigSchema } from './schema.ts';
 The schema includes:
 
 - `agentDefaults`: Default configuration for all agents
-- `providers`: Terminal provider configurations
+- `provider`: Default terminal provider name
+- `workingDirectory`: Default working directory
+- `bash`: Bash execution defaults
+- `cropOutput`: Maximum output length (default: 10000)
+- `timeoutSeconds`: Command timeout in seconds (default: 60)
+- `autoApproveUnknownCommandsAfter`: Auto-approve timeout in seconds (default: 30)
+- `interactive`: Interactive session defaults
+- `cropOutput`: Maximum output length (default: 10000)
+- `minInterval`: Minimum wait before checking output (default: 1s)
+- `settleInterval`: Inactivity time before responding (default: 2s)
+- `maxInterval`: Maximum wait time (default: 30s)
 - `safeCommands`: List of safe command patterns
 - `dangerousCommands`: List of dangerous command regex patterns
 
@@ -586,25 +651,222 @@ See `schema.ts` for the complete schema definition.
 ```typescript
 const agentConfig = {
   terminal: {
-    provider: 'local', // Optional, defaults to agentDefaults.provider
+    provider: 'local',
+    workingDirectory: '.',
     bash: {
-      cropOutput: 5000, // Optional, defaults to agentDefaults.bash.cropOutput
-      timeoutSeconds: 30 // Optional, defaults to agentDefaults.bash.timeoutSeconds
+      cropOutput: 5000,
+      timeoutSeconds: 30,
+      autoApproveUnknownCommandsAfter: 15
     },
     interactive: {
-      minInterval: 1, // Optional, defaults to agentDefaults.interactive.minInterval
-      settleInterval: 2, // Optional, defaults to agentDefaults.interactive.settleInterval
-      maxInterval: 30 // Optional, defaults to agentDefaults.interactive.maxInterval
+      cropOutput: 5000,
+      minInterval: 1,
+      settleInterval: 2,
+      maxInterval: 30
     }
   }
 };
+```
+
+## RPC Endpoints
+
+The terminal package exposes RPC endpoints for external terminal management.
+
+**Endpoint Path:** `/rpc/terminal`
+
+### Methods
+
+#### listTerminals
+
+List all terminal sessions.
+
+**Input:**
+
+```typescript
+{
+  agentId?: string  // Optional: Filter by agent
+}
+```
+
+**Output:**
+
+```typescript
+{
+  terminals: Array<{
+    name: string;
+    lastInput?: string;
+    providerName: string;
+    workingDirectory: string;
+    startTime: number;
+    running: boolean;
+    outputLength: number;
+    exitCode: number | null;
+    connectedAgentIds: string[];
+  }>;
+}
+```
+
+#### spawnTerminal
+
+Create a new terminal session.
+
+**Input:**
+
+```typescript
+{
+  agentId?: string;      // Optional: Agent to attach to
+  providerName?: string; // Optional: Provider name (defaults to first available)
+  connectToAgent?: boolean; // Optional: Auto-connect to agent
+}
+```
+
+**Output:**
+
+```typescript
+{
+  terminalName: string;
+}
+```
+
+#### attachTerminal
+
+Attach an agent to a terminal session.
+
+**Input:**
+
+```typescript
+{
+  agentId: string;
+  terminalName: string;
+  fromPosition?: number; // Optional: Start reading from position
+}
+```
+
+**Output:**
+
+```typescript
+{
+  status: "success" | "agentNotFound";
+  success?: boolean;
+}
+```
+
+#### detachTerminal
+
+Detach an agent from a terminal session.
+
+**Input:**
+
+```typescript
+{
+  agentId: string;
+  terminalName: string;
+}
+```
+
+**Output:**
+
+```typescript
+{
+  status: "success" | "agentNotFound";
+  success?: boolean;
+}
+```
+
+#### sendInput
+
+Send input to a terminal session.
+
+**Input:**
+
+```typescript
+{
+  terminalName: string;
+  input: string;
+}
+```
+
+**Output:**
+
+```typescript
+{
+  success: boolean;
+}
+```
+
+#### retrieveOutput
+
+Retrieve output from a terminal session with waiting strategy.
+
+**Input:**
+
+```typescript
+{
+  terminalName: string;
+  fromPosition?: number;    // Default: 0
+  minInterval?: number;     // Default: 0
+  settleInterval?: number;  // Default: 0
+  maxInterval?: number;     // Default: 0
+  cropOutput?: number;      // Optional: Truncate output
+}
+```
+
+**Output:**
+
+```typescript
+{
+  output: string;
+  position: number;
+  complete: boolean;
+}
+```
+
+#### getCompleteOutput
+
+Get the complete output from a terminal session.
+
+**Input:**
+
+```typescript
+{
+  terminalName: string;
+}
+```
+
+**Output:**
+
+```typescript
+{
+  output: string;
+}
+```
+
+#### terminateTerminal
+
+Terminate a terminal session.
+
+**Input:**
+
+```typescript
+{
+  terminalName: string;
+}
+```
+
+**Output:**
+
+```typescript
+{
+  success: boolean;
+}
 ```
 
 ## Persistent Terminal Sessions
 
 ### Overview
 
-Persistent terminal sessions allow agents to start long-running processes and interact with them over time. This is useful for:
+Persistent terminal sessions allow agents to start long-running processes and interact with them over time. This is
+useful for:
 
 - Running development servers (npm run dev, python manage.py runserver)
 - Interactive shells (bash, python REPL)
@@ -622,28 +884,32 @@ When starting or continuing a session, the system waits for output using three c
 ### Session Lifecycle
 
 1. **Start**: Agent starts a terminal with `terminal_start` tool
-   - Command is validated for safety
-   - Session is created with unique ID
-   - Initial output is collected and returned
-   - Position marker is saved in state
+
+- Command is validated for safety
+- Session is created with unique name
+- Initial output is collected and returned
+- Position marker is saved in state
 
 2. **Continue**: Agent interacts with `terminal_continue` tool
-   - Optional stdin can be sent to the process
-   - New output since last position is collected
-   - Position is updated in state
-   - Returns whether process has completed
+
+- Optional stdin can be sent to the process
+- New output since last position is collected
+- Position is updated in state
+- Returns whether process has completed
 
 3. **Stop**: Agent terminates with `terminal_stop` tool
-   - Process is killed
-   - Session is removed from state
+
+- Agent is disconnected from session
+- Session is terminated if no agents connected
 
 4. **List**: Agent views active sessions with `terminal_list` tool
-   - Shows all running sessions
-   - Displays command, position, and uptime
+
+- Shows all running sessions
+- Displays command, position, and uptime
 
 ### Session Cleanup
 
-- Sessions are automatically terminated on agent reset (chat or full)
+- Sessions are automatically terminated when last agent disconnects
 - Completed processes are removed from state
 - Orphaned processes are cleaned up on service shutdown
 
@@ -656,7 +922,7 @@ import TerminalService from '@tokenring-ai/terminal';
 
 const terminal = new TerminalService(config);
 
-const result = await terminal.executeCommand(
+const result = terminal.executeCommand(
   'npm',
   ['install'],
   { timeoutSeconds: 60 },
@@ -689,9 +955,13 @@ const commands = terminal.parseCompoundCommand('git add . && git commit -m "test
 ### Register Terminal Provider
 
 ```typescript
-import type { TerminalProvider } from '@tokenring-ai/terminal';
+import type { InteractiveTerminalProvider } from '@tokenring-ai/terminal';
 
-class MyTerminalProvider implements TerminalProvider {
+class MyTerminalProvider implements InteractiveTerminalProvider {
+  displayName = 'My Provider';
+  supportedIsolationLevels = ['sandbox', 'none'];
+  isInteractive = true;
+
   async executeCommand(command, args, options) {
     // Implementation
   }
@@ -702,6 +972,7 @@ class MyTerminalProvider implements TerminalProvider {
 
   async startInteractiveSession(options) {
     // Implementation
+    return 'session-id';
   }
 
   async sendInput(sessionId, input) {
@@ -719,14 +990,10 @@ class MyTerminalProvider implements TerminalProvider {
   getSessionStatus(sessionId) {
     // Implementation
   }
-
-  getIsolationLevel() {
-    return 'none';
-  }
 }
 
 terminal.registerTerminalProvider('my-provider', new MyTerminalProvider());
-terminal.setActiveTerminal('my-provider', agent);
+terminal.setActiveProvider('my-provider', agent);
 ```
 
 ### Using the shell_bash Tool
@@ -742,7 +1009,7 @@ const result = await agent.execute({
   }
 });
 
-console.log(result.output);
+console.log(result.result);
 ```
 
 ### Using Persistent Terminal Sessions
@@ -755,17 +1022,16 @@ const startResult = await agent.execute({
     command: 'npm run dev'
   }
 });
-// Returns: { id: 'term-1', output: 'Server starting...', position: 100 }
+// Returns output with terminalName
 
 // Send input to the session
 const continueResult = await agent.execute({
   tool: 'terminal_continue',
   arguments: {
-    sessionId: 'term-1',
+    terminalName: 'term-1',
     stdin: 'y\n'
   }
 });
-// Returns: { output: 'Server started on port 3000', position: 250, complete: false }
 
 // List active sessions
 const listResult = await agent.execute({
@@ -776,7 +1042,7 @@ const listResult = await agent.execute({
 // Stop the session
 await agent.execute({
   tool: 'terminal_stop',
-  arguments: { sessionId: 'term-1' }
+  arguments: { terminalName: 'term-1' }
 });
 ```
 
@@ -784,16 +1050,17 @@ await agent.execute({
 
 ```typescript
 // Start a Python REPL
-const { id } = await agent.execute({
+const startResult = await agent.execute({
   tool: 'terminal_start',
   arguments: { command: 'python3' }
 });
+const terminalName = 'term-1'; // From startResult
 
 // Execute Python code
 await agent.execute({
   tool: 'terminal_continue',
   arguments: {
-    sessionId: id,
+    terminalName,
     stdin: 'print("Hello from Python")\n'
   }
 });
@@ -802,7 +1069,7 @@ await agent.execute({
 await agent.execute({
   tool: 'terminal_continue',
   arguments: {
-    sessionId: id,
+    terminalName,
     stdin: 'x = 42\nprint(x * 2)\n'
   }
 });
@@ -810,7 +1077,7 @@ await agent.execute({
 // Exit the REPL
 await agent.execute({
   tool: 'terminal_stop',
-  arguments: { sessionId: id }
+  arguments: { terminalName }
 });
 ```
 
@@ -848,32 +1115,38 @@ The terminal package integrates with the Token Ring plugin system:
 
 ```typescript
 // plugin.ts
-import {AgentCommandService} from "@tokenring-ai/agent";
-import {TokenRingPlugin} from "@tokenring-ai/app";
-import {ChatService} from "@tokenring-ai/chat";
-import {z} from "zod";
+import { AgentCommandService } from "@tokenring-ai/agent";
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import { ChatService } from "@tokenring-ai/chat";
+import { RpcService } from "@tokenring-ai/rpc";
+import { z } from "zod";
 import commands from "./commands.ts";
-import packageJSON from "./package.json" with {type: "json"};
+import packageJSON from "./package.json" with { type: "json" };
+import terminalRPC from "./rpc/terminal.ts";
+import { TerminalConfigSchema } from "./schema.ts";
 import TerminalService from "./TerminalService.js";
-import {TerminalConfigSchema} from "./schema.ts";
 import tools from "./tools.ts";
 
 const packageConfigSchema = z.object({
-  terminal: TerminalConfigSchema.optional(),
+  terminal: TerminalConfigSchema.exactOptional(),
 });
 
 export default {
   name: packageJSON.name,
+  displayName: "Terminal Service",
   version: packageJSON.version,
   description: packageJSON.description,
   install(app, config) {
     if (config.terminal) {
       app.addServices(new TerminalService(config.terminal));
       app.waitForService(ChatService, chatService => {
-        chatService.addTools(tools);
+        chatService.addTools(...tools);
       });
       app.waitForService(AgentCommandService, agentCommandService => {
         agentCommandService.addAgentCommands(commands);
+      });
+      app.waitForService(RpcService, rpcService => {
+        rpcService.registerEndpoint(terminalRPC);
       });
     }
   },
@@ -920,7 +1193,7 @@ expect(terminalService.getCommandSafetyLevel('npm install')).toBe('safe');
 
 ## Package Structure
 
-```
+```text
 pkg/terminal/
 ├── index.ts                 # Main exports
 ├── plugin.ts                # Plugin definition for TokenRing integration
@@ -950,6 +1223,9 @@ pkg/terminal/
 │           ├── set.ts       # /terminal provider set
 │           ├── select.ts    # /terminal provider select
 │           └── list.ts      # /terminal provider list
+├── rpc/
+│   ├── schema.ts            # RPC schema definitions
+│   └── terminal.ts          # RPC endpoint implementation
 ├── test/
 │   ├── createTestTerminal.ts # Test utility
 │   └── TerminalService.commandValidation.test.ts # Command validation tests
@@ -965,18 +1241,21 @@ pkg/terminal/
 The package may throw the following errors:
 
 - **Error**: General errors with descriptive messages
-  - `"No terminal provider configured for agent"` - When no provider is set
-  - `"Session {sessionId} not found"` - When accessing a non-existent session
-  - `[toolName] {message}` - Tool-specific errors
+- `"No terminal provider configured for agent"` - When no provider is set
+- `"Terminal {name} not found"` - When accessing a non-existent session
+- `"Agent {id} is not connected to terminal {name}"` - When agent not connected
+- `"Provider '{name}' does not support interactive sessions"` - When using interactive features with non-interactive
+  provider
+- `[toolName] {message}` - Tool-specific errors
 
 - **CommandFailedError**: Command execution failures
-  - `"Provider \"{name}\" not found."` - Invalid provider name when using `/terminal provider set`
+- `"Provider \"{name}\" not found."` - Invalid provider name when using `/terminal provider set`
 
 ### Error Handling Examples
 
 ```typescript
 try {
-  await terminal.executeCommand('ls', [], {}, agent);
+  terminal.executeCommand('ls', [], {}, agent);
 } catch (error) {
   if (error.message.includes('No terminal provider')) {
     console.error('Please configure a terminal provider first');
@@ -988,7 +1267,8 @@ try {
 
 ## Best Practices
 
-1. **Use persistent sessions for long-running processes**: Always use `terminal_start` and `terminal_continue` for development servers or interactive shells instead of `shell_bash`.
+1. **Use persistent sessions for long-running processes**: Always use `terminal_start` and `terminal_continue` for
+   development servers or interactive shells instead of `shell_bash`.
 
 2. **Always clean up sessions**: Use `terminal_stop` to terminate sessions when done to prevent orphaned processes.
 
@@ -1000,12 +1280,15 @@ try {
 
 6. **Monitor session state**: Use `terminal_list` to track active sessions and prevent resource exhaustion.
 
+7. **Use sandboxed execution**: Keep sandbox enabled for security unless you have a specific reason to disable it.
+
 ## Related Components
 
 - `@tokenring-ai/agent` - Agent orchestration system
 - `@tokenring-ai/app` - Application framework
 - `@tokenring-ai/chat` - Chat service integration
 - `@tokenring-ai/utility` - Shared utilities
+- `@tokenring-ai/rpc` - RPC service for external communication
 
 ## License
 

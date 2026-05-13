@@ -6,15 +6,15 @@ import type {
   SessionStatus,
   TerminalIsolationLevel,
   TerminalProvider,
-} from '../TerminalProvider.js';
+} from "../TerminalProvider.js";
 
 /**
  * TestTerminalProvider is a mock implementation of TerminalProvider for testing purposes.
  * It simulates terminal operations without actually executing commands.
  */
 export class TestTerminalProvider implements TerminalProvider {
-  readonly displayName = 'Test Terminal Provider';
-  readonly isolationLevel: TerminalIsolationLevel = 'sandbox';
+  readonly displayName = "Test Terminal Provider";
+  readonly isolationLevel: TerminalIsolationLevel = "sandbox";
 
   // Internal state for tracking commands and sessions
   private executedCommands: Array<{
@@ -39,7 +39,7 @@ export class TestTerminalProvider implements TerminalProvider {
 
   // Test configuration
   private defaultExitCode = 0;
-  private defaultOutput = 'Test output';
+  private defaultOutput = "Test output";
   private shouldFail = false;
 
   /**
@@ -69,7 +69,7 @@ export class TestTerminalProvider implements TerminalProvider {
     this.sessions.clear();
     this.nextSessionId = 1;
     this.defaultExitCode = 0;
-    this.defaultOutput = 'Test output';
+    this.defaultOutput = "Test output";
     this.shouldFail = false;
   }
 
@@ -114,33 +114,33 @@ export class TestTerminalProvider implements TerminalProvider {
 
     if (this.shouldFail) {
       return {
-        status: 'unknownError',
-        error: 'Simulated test failure',
+        status: "unknownError",
+        error: "Simulated test failure",
       };
     }
 
     // Build output based on command
     let output = this.defaultOutput;
-    if (command === 'echo' && args.length > 0) {
-      output = args.join(' ');
-    } else if (command === 'ls') {
-      output = 'file1.txt\nfile2.txt\ndirectory/';
-    } else if (command === 'pwd') {
+    if (command === "echo" && args.length > 0) {
+      output = args.join(" ");
+    } else if (command === "ls") {
+      output = "file1.txt\nfile2.txt\ndirectory/";
+    } else if (command === "pwd") {
       output = options.workingDirectory;
-    } else if (command === 'cd') {
+    } else if (command === "cd") {
       output = `Changed directory to ${args[0] || options.workingDirectory}`;
     }
 
     if (this.defaultExitCode !== 0) {
       return {
-        status: 'badExitCode',
+        status: "badExitCode",
         output,
         exitCode: this.defaultExitCode,
       };
     }
 
     return {
-      status: 'success',
+      status: "success",
       output,
       exitCode: 0,
     };
@@ -152,13 +152,13 @@ export class TestTerminalProvider implements TerminalProvider {
   ): Promise<ExecuteCommandResult> {
     if (this.shouldFail) {
       return {
-        status: 'unknownError',
-        error: 'Simulated script failure',
+        status: "unknownError",
+        error: "Simulated script failure",
       };
     }
 
     return {
-      status: 'success',
+      status: "success",
       output: `Executed script:\n${script}`,
       exitCode: 0,
     };
@@ -168,11 +168,11 @@ export class TestTerminalProvider implements TerminalProvider {
     options: ExecuteCommandOptions
   ): Promise<string> {
     const sessionId = `session-${this.nextSessionId++}`;
-    const command = options.workingDirectory || 'default-command';
+    const command = options.workingDirectory || "default-command";
 
     this.sessions.set(sessionId, {
       commandList: command,
-      output: '',
+      output: "",
       position: 0,
       running: true,
       startTime: Date.now(),

@@ -1,13 +1,13 @@
-import {z} from "zod";
+import { z } from "zod";
 
-import {TerminalConfigSchema} from "../schema";
-import TerminalService from '../TerminalService.ts';
-import {TestTerminalProvider} from './TestTerminalProvider.ts';
+import { TerminalConfigSchema } from "../schema";
+import TerminalService from "../TerminalService.ts";
+import { TestTerminalProvider } from "./TestTerminalProvider.ts";
 
 // Test configuration for TerminalService
 const testConfig = {
   agentDefaults: {
-    provider: 'test',
+    provider: "test",
     workingDirectory: process.cwd(),
     bash: {
       cropOutput: 10000,
@@ -21,7 +21,7 @@ const testConfig = {
   },
   providers: {
     test: {
-      type: 'test',
+      type: "test",
     }
   },
   safeCommands: TerminalConfigSchema.shape.safeCommands.defaultValues,
@@ -31,13 +31,13 @@ const testConfig = {
 // Create a test instance of TerminalService
 export default function createTestTerminal(): TerminalService {
   const service = new TerminalService(TerminalConfigSchema.parse(testConfig));
-  
+
   // Register the test provider
   const testProvider = new TestTerminalProvider();
-  service.registerTerminalProvider('test', testProvider);
-  
+  service.registerTerminalProvider("test", testProvider);
+
   return service;
 }
 
 // Export the test provider class for direct use in tests
-export {TestTerminalProvider};
+export { TestTerminalProvider };

@@ -30,6 +30,7 @@ function adjustActivation(enabled: boolean, agent: Agent) {
   }
   return enabled;
 }
+
 export default {
   name,
   displayName,
