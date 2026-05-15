@@ -1,9 +1,9 @@
+import deepClone from "@tokenring-ai/utility/object/deepClone";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import type Agent from "@tokenring-ai/agent/Agent";
 import type { AgentCreationContext } from "@tokenring-ai/agent/types";
 import type { TokenRingService } from "@tokenring-ai/app/types";
-import deepMerge from "@tokenring-ai/utility/object/deepMerge";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
 import { generateHumanId } from "@tokenring-ai/utility/string/generateHumanId";
 import type { MaybePromise } from "bun";
@@ -67,7 +67,7 @@ export default class TerminalService implements TokenRingService {
   }
 
   attach(agent: Agent, creationContext: AgentCreationContext): void {
-    const config = deepMerge(this.options.agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
+    const config = deepClone(this.options.agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
     const initialState = agent.initializeState(TerminalState, config);
 
     const providerName = initialState.providerName ?? this.options.agentDefaults.provider;
