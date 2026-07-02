@@ -16,12 +16,23 @@ export default {
         terminals: z.array(TerminalSessionSummarySchema),
       }),
     },
+    streamTerminals: {
+      type: "stream",
+      input: z.object({
+        agentId: z.string().exactOptional(),
+      }),
+      result: z.object({
+        terminals: z.array(TerminalSessionSummarySchema),
+      }),
+    },
     spawnTerminal: {
       type: "mutation",
       input: z.object({
         agentId: z.string().exactOptional(),
         providerName: z.string().exactOptional(),
         connectToAgent: z.boolean().exactOptional(),
+        isolation: z.enum(["none", "sandbox","container","auto"]).default("auto"),
+        workingDirectory: z.string().exactOptional(),
       }),
       result: z.object({
         terminalName: z.string(),
@@ -81,6 +92,24 @@ export default {
         position: z.number(),
         complete: z.boolean(),
       }),
+    },
+    streamTerminalOutput: {
+      type: "stream",
+      input: z.object({
+        terminalName: z.string(),
+        fromPosition: z.number().default(0),
+      }),
+      result: z.discriminatedUnion("status", [
+        z.object({
+          status: z.literal("success"),
+          output: z.string(),
+          position: z.number(),
+          complete: z.boolean(),
+        }),
+        z.object({
+          status: z.literal("terminalNotFound"),
+        }),
+      ]),
     },
     getCompleteOutput: {
       type: "query",

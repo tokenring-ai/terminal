@@ -14,6 +14,8 @@ import type {
  */
 export class TestTerminalProvider implements TerminalProvider {
   readonly displayName = "Test Terminal Provider";
+  readonly isInteractive = true as const;
+  readonly supportedIsolationLevels: TerminalIsolationLevel[] = ["sandbox", "host", "container"];
   readonly isolationLevel: TerminalIsolationLevel = "sandbox";
 
   // Internal state for tracking commands and sessions

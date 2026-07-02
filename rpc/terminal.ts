@@ -1,7 +1,7 @@
 import { AgentManager } from "@tokenring-ai/agent";
 import type TokenRingApp from "@tokenring-ai/app";
-import { stripUndefinedKeys } from "@tokenring-ai/utility/object/stripObject";
 import { createRPCEndpoint } from "../../rpc/createRPCEndpoint.ts";
+import { projectTerminalList } from "../projectTerminalList.ts";
 import TerminalService from "../TerminalService.ts";
 import TerminalRpcSchema from "./schema.ts";
 
@@ -14,23 +14,16 @@ function requireAgent(app: TokenRingApp, agentId: string) {
 }
 
 export default createRPCEndpoint(TerminalRpcSchema, {
-  listTerminals(_args, app) {
+  listTerminals(args, app) {
+    return projectTerminalList(app.requireService(TerminalService), args.agentId);
+  },
+
+  async *streamTerminals(args, app, signal) {
     const terminalService = app.requireService(TerminalService);
-    return {
-      terminals: Array.from(terminalService.getAllTerminalSessions()).map(([, item]) =>
-        stripUndefinedKeys({
-          name: item.name,
-          lastInput: item.lastInput,
-          providerName: item.providerName,
-          workingDirectory: item.workingDirectory,
-          startTime: item.startTime,
-          running: true,
-          outputLength: 0,
-          exitCode: null,
-          connectedAgentIds: Array.from(item.connectedAgents.keys()),
-        }),
-      ),
-    };
+
+    for await (const snapshot of terminalService.subscribeTerminalsAsync(signal, args.agentId)) {
+      yield snapshot;
+    }
   },
 
   async spawnTerminal(args, app) {
@@ -38,7 +31,7 @@ export default createRPCEndpoint(TerminalRpcSchema, {
     const terminalName = await terminalService.createSession({
       providerName: args.providerName ?? terminalService.getAvailableProviders()[0],
       workingDirectory: terminalService.defaultWorkingDirectory(),
-      isolation: "sandbox",
+      isolation: args.isolation,
       ...(args.agentId && { attachToAgent: requireAgent(app, args.agentId) }),
     });
     return { terminalName };
@@ -78,6 +71,13 @@ export default createRPCEndpoint(TerminalRpcSchema, {
       maxInterval: args.maxInterval ?? 0,
       ...(args.cropOutput && { cropOutput: args.cropOutput }),
     });
+  },
+
+  async *streamTerminalOutput(args, app, signal) {
+    const terminalService = app.requireService(TerminalService);
+    for await (const chunk of terminalService.subscribeOutputAsync(args.terminalName, args.fromPosition ?? 0, signal)) {
+      yield chunk;
+    }
   },
 
   async getCompleteOutput(args, app) {
