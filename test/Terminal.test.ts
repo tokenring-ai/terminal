@@ -1,5 +1,5 @@
-import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent";
-import createTestingApp from "@tokenring-ai/app/test/createTestingApp";
+import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent.test";
+import createTestingApp from "@tokenring-ai/app/test/createTestingApp.test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import createLocalRPCClient from "../../rpc/createLocalRPCClient.ts";
@@ -8,7 +8,7 @@ import { TerminalConfigSchema } from "../schema.ts";
 import { TerminalState } from "../state/terminalState.ts";
 import type { ExecuteCommandOptions } from "../TerminalProvider.ts";
 import TerminalService from "../TerminalService.ts";
-import { TestTerminalProvider } from "./TestTerminalProvider.ts";
+import { TestTerminalProvider } from "./TestTerminalProvider.test.ts";
 
 /**
  * Test suite for TerminalService

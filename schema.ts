@@ -65,6 +65,7 @@ export const TerminalConfigSchema = z
         "chdir",
         "diff",
         "echo",
+        "file",
         "find",
         "git",
         "grep",

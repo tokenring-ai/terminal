@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { TerminalConfigSchema } from "../schema";
 import TerminalService from "../TerminalService.ts";
-import { TestTerminalProvider } from "./TestTerminalProvider.ts";
+import { TestTerminalProvider } from "./TestTerminalProvider.test.ts";
 
 // Test configuration for TerminalService
 const testConfig = {
