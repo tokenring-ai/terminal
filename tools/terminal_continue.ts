@@ -24,6 +24,12 @@ export async function execute({ terminalName, stdin }: z.output<typeof inputSche
 
   const runTime = Math.floor(Date.now() - startTime);
 
+  if (result.status === "terminalNotInteractive") {
+    return "Terminal is not interactive";
+  } else if (result.status === "terminalNotFound") {
+    return "Terminal not found";
+  }
+
   terminal.requireAgentRecord(terminalName, agent).lastPosition = result.position;
 
   return `

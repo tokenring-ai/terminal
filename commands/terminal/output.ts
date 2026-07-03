@@ -1,3 +1,4 @@
+import { CommandFailedError } from "@tokenring-ai/agent/AgentError";
 import type { AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand } from "@tokenring-ai/agent/types";
 import codeBlock from "@tokenring-ai/utility/string/codeBlock";
 import TerminalService from "../../TerminalService.ts";
@@ -17,6 +18,14 @@ export default {
 /terminal output term-1`,
   inputSchema,
   execute: async ({ positionals: { terminalName }, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    return codeBlock(await agent.requireServiceByType(TerminalService).readFullOutput(terminalName));
+    const result = await agent.requireServiceByType(TerminalService).readFullOutput(terminalName);
+    if (result.status === "terminalNotFound") {
+      throw new CommandFailedError("Terminal not found");
+    }
+    if (result.status === "terminalNotInteractive") {
+      throw new CommandFailedError("Terminal is not interactive");
+    }
+
+    return codeBlock(result.output);
   },
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

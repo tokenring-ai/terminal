@@ -15,26 +15,44 @@ function requireAgent(app: TokenRingApp, agentId: string) {
 
 export default createRPCEndpoint(TerminalRpcSchema, {
   listTerminals(args, app) {
-    return projectTerminalList(app.requireService(TerminalService), args.agentId);
+    if (args.agentId) {
+      const agent = app.requireService(AgentManager).getAgent(args.agentId);
+      if (!agent) {
+        return { status: "agentNotFound" as const };
+      }
+    }
+    return { status: "success", terminals: projectTerminalList(app.requireService(TerminalService), args.agentId) };
   },
 
   async *streamTerminals(args, app, signal) {
+    if (args.agentId) {
+      const agent = app.requireService(AgentManager).getAgent(args.agentId);
+      if (!agent) {
+        return { status: "agentNotFound" as const };
+      }
+    }
     const terminalService = app.requireService(TerminalService);
 
     for await (const snapshot of terminalService.subscribeTerminalsAsync(signal, args.agentId)) {
-      yield snapshot;
+      yield { status: "success", terminals: snapshot };
     }
   },
 
   async spawnTerminal(args, app) {
     const terminalService = app.requireService(TerminalService);
+
+    const providerName = args.providerName ?? terminalService.getAvailableProviders()[0];
+    if (!providerName) {
+      return { status: "providerNotFound" };
+    }
+
     const terminalName = await terminalService.createSession({
-      providerName: args.providerName ?? terminalService.getAvailableProviders()[0],
+      providerName,
       workingDirectory: terminalService.defaultWorkingDirectory(),
       isolation: args.isolation,
       ...(args.agentId && { attachToAgent: requireAgent(app, args.agentId) }),
     });
-    return { terminalName };
+    return { status: "success", terminalName };
   },
 
   attachTerminal(args, app) {
@@ -59,8 +77,8 @@ export default createRPCEndpoint(TerminalRpcSchema, {
   },
 
   async sendInput(args, app) {
-    await app.requireService(TerminalService).sendInput(args.terminalName, args.input);
-    return { success: true };
+    const status = await app.requireService(TerminalService).sendInput(args.terminalName, args.input);
+    return { status };
   },
 
   async retrieveOutput(args, app) {
@@ -81,12 +99,10 @@ export default createRPCEndpoint(TerminalRpcSchema, {
   },
 
   async getCompleteOutput(args, app) {
-    const output = await app.requireService(TerminalService).readFullOutput(args.terminalName);
-    return { output };
+    return await app.requireService(TerminalService).readFullOutput(args.terminalName);
   },
 
   async terminateTerminal(args, app) {
-    await app.requireService(TerminalService).closeSession(args.terminalName);
-    return { success: true };
+    return await app.requireService(TerminalService).closeSession(args.terminalName);
   },
 });

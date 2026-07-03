@@ -111,8 +111,8 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
       resultText += `[error: ${result.error}]`;
       break;
     default: {
-      const unknownResultStatus: never = result;
-      throw new Error(`[${name}] Unknown result status: ${unknownResultStatus as string}`);
+      const exhaustive: any = result satisfies never;
+      throw new Error(`[${name}] Unknown result status: ${exhaustive.status}`);
     }
   }
 

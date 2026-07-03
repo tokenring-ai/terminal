@@ -9,7 +9,7 @@ async function execute({ agent }: AgentCommandInputType<typeof inputSchema>): Pr
   const terminal = agent.requireServiceByType(TerminalService);
   const available = terminal.getAvailableProviders();
   if (available.length === 0) return "No terminal providers are registered.";
-  if (available.length === 1) {
+  if (available.length === 1 && available[0]) {
     terminal.setActiveProvider(available[0], agent);
     return `Only one provider configured, auto-selecting: ${available[0]}`;
   }
@@ -30,7 +30,7 @@ async function execute({ agent }: AgentCommandInputType<typeof inputSchema>): Pr
       tree,
     },
   });
-  if (selection) {
+  if (selection?.[0]) {
     terminal.setActiveProvider(selection[0], agent);
     return `Active provider set to: ${selection[0]}`;
   }

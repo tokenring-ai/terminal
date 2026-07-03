@@ -9,11 +9,17 @@ import type { MaybePromise } from "bun";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import type { z } from "zod";
-import { projectTerminalList, type TerminalListProjection } from "./projectTerminalList.ts";
+import { projectTerminalList } from "./projectTerminalList.ts";
+import type { TerminalNotInteractive } from "./rpc/schema.ts";
+import type { TerminalNotFound } from "./rpc/schema.ts";
+import type { ParsedTerminalSessionSummary } from "./schema.ts";
 import { TerminalAgentConfigSchema, type TerminalConfigSchema } from "./schema.ts";
 import { TerminalState } from "./state/terminalState.ts";
+import type { InteractiveTerminalOutput } from "./TerminalProvider.ts";
 import type { TerminalIsolationLevel } from "./TerminalProvider.ts";
 import type { ExecuteCommandOptions, ExecuteCommandResult, TerminalProvider } from "./TerminalProvider.ts";
+
+type SuccessResult = { status: "success" };
 
 type TerminalConnection = {
   lastPosition: number;
@@ -44,15 +50,27 @@ type RetrieveTerminalOutputOptions = {
   cropOutput?: number;
 };
 
+type ReadTerminalOutputResult =
+  | {
+      status: "success";
+      output: string;
+      position: number;
+      complete: boolean;
+    }
+  | TerminalNotFound
+  | TerminalNotInteractive;
+
+type ReadFullOutputReturnType = TerminalNotInteractive | TerminalNotFound | (SuccessResult & InteractiveTerminalOutput);
+
+type TerminalCloseResult = TerminalNotFound | TerminalNotInteractive | SuccessResult;
+
 const isolationRanks: Record<TerminalIsolationLevel, number> = {
   none: 0,
   sandbox: 1,
   container: 2,
 };
 
-export type TerminalOutputStreamChunk =
-  | { status: "terminalNotFound" }
-  | { status: "success"; output: string; position: number; complete: boolean };
+export type TerminalOutputStreamChunk = { status: "terminalNotFound" } | { status: "success"; output: string; position: number; complete: boolean };
 
 export default class TerminalService implements TokenRingService {
   readonly name = "TerminalService";
@@ -80,7 +98,7 @@ export default class TerminalService implements TokenRingService {
     this.terminalProviderRegistry.require(this.options.agentDefaults.provider);
   }
 
-  async* subscribeTerminalsAsync(signal: AbortSignal, agentId?: string): AsyncGenerator<TerminalListProjection> {
+  async *subscribeTerminalsAsync(signal: AbortSignal, agentId?: string): AsyncGenerator<ParsedTerminalSessionSummary[]> {
     //TODO: This is a bit weird, we should un-vibe this and find a better pattern for watching terminals
     if (signal.aborted) {
       return;
@@ -88,7 +106,7 @@ export default class TerminalService implements TokenRingService {
 
     let pending = true;
     let resolveNext: (() => void) | null = null;
-    let lastSnapshot: TerminalListProjection | undefined;
+    let lastSnapshot: ParsedTerminalSessionSummary[] | undefined;
     let statusPollTimer: ReturnType<typeof setInterval> | null = null;
 
     const listener = () => {
@@ -216,7 +234,7 @@ export default class TerminalService implements TokenRingService {
     }
 
     if (isolation === "auto") {
-      isolation = provider.supportedIsolationLevels[0];
+      isolation = provider.supportedIsolationLevels[0]!;
 
       for (const supportedIsolationLevel of provider.supportedIsolationLevels) {
         if (isolationRanks[supportedIsolationLevel] > isolationRanks[isolation]) {
@@ -249,23 +267,31 @@ export default class TerminalService implements TokenRingService {
     return name;
   }
 
-  async sendInput(terminalName: string, input: string): Promise<void> {
-    const terminal = this.requireSession(terminalName);
+  async sendInput(terminalName: string, input: string): Promise<"success" | "terminalNotFound" | "terminalNotInteractive"> {
+    const terminal = this.getTerminalSessionByName(terminalName);
+    if (!terminal) {
+      return "terminalNotFound";
+    }
     const provider = this.requireProviderByName(terminal.providerName);
     if (!provider.isInteractive) {
-      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+      return "terminalNotInteractive";
     }
 
     terminal.lastInput = input;
     await provider.sendInput(terminal.providerSessionId, input);
     this.notifyTerminalListChanged();
+    return "success";
   }
 
-  async readOutput(terminalName: string, options: RetrieveTerminalOutputOptions): Promise<{ output: string; position: number; complete: boolean }> {
-    const terminal = this.requireSession(terminalName);
+  async readOutput(terminalName: string, options: RetrieveTerminalOutputOptions): Promise<ReadTerminalOutputResult> {
+    const terminal = this.getTerminalSessionByName(terminalName);
+    if (!terminal) {
+      return { status: "terminalNotFound" };
+    }
+
     const provider = this.requireProviderByName(terminal.providerName);
     if (!provider.isInteractive) {
-      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+      return { status: "terminalNotInteractive" };
     }
 
     const { fromPosition, minInterval, settleInterval, maxInterval, cropOutput } = options;
@@ -311,13 +337,14 @@ export default class TerminalService implements TokenRingService {
     }
 
     return {
+      status: "success",
       output,
       position: result.newPosition,
       complete: result.isComplete,
     };
   }
 
-  async* subscribeOutputAsync(terminalName: string, fromPosition: number, signal: AbortSignal): AsyncGenerator<TerminalOutputStreamChunk> {
+  async *subscribeOutputAsync(terminalName: string, fromPosition: number, signal: AbortSignal): AsyncGenerator<TerminalOutputStreamChunk> {
     let session = this.terminalSessionRegistry.get(terminalName);
     if (!session) {
       yield { status: "terminalNotFound" };
@@ -373,11 +400,15 @@ export default class TerminalService implements TokenRingService {
     }
   }
 
-  async readFullOutput(terminalName: string): Promise<string> {
-    const terminal = this.requireSession(terminalName);
+  async readFullOutput(terminalName: string): Promise<ReadFullOutputReturnType> {
+    const terminal = this.getTerminalSessionByName(terminalName);
+    if (!terminal) {
+      return { status: "terminalNotFound" };
+    }
+
     const provider = this.requireProviderByName(terminal.providerName);
     if (!provider.isInteractive) {
-      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+      return { status: "terminalNotInteractive" };
     }
     const result = await provider.collectOutput(terminal.providerSessionId, 0, {
       minInterval: 0,
@@ -385,19 +416,26 @@ export default class TerminalService implements TokenRingService {
       maxInterval: 0,
     });
 
-    return result.output;
+    return {
+      status: "success",
+      ...result,
+    };
   }
 
-  async closeSession(terminalName: string): Promise<void> {
-    const terminal = this.requireSession(terminalName);
-    const provider = this.requireProviderByName(terminal.providerName);
-    if (!provider.isInteractive) {
-      throw new Error(`Provider '${terminal.providerName}' does not support interactive sessions`);
+  async closeSession(terminalName: string): Promise<TerminalCloseResult> {
+    const terminal = this.getTerminalSessionByName(terminalName);
+    if (!terminal) {
+      return { status: "terminalNotFound" };
     }
 
+    const provider = this.requireProviderByName(terminal.providerName);
+    if (!provider.isInteractive) {
+      return { status: "terminalNotInteractive" };
+    }
     await provider.terminateSession(terminal.providerSessionId);
     this.terminalSessionRegistry.unregister(terminalName);
     this.notifyTerminalListChanged();
+    return { status: "success" };
   }
 
   resolveWorkingDirectory(workingDirectory: string | undefined, defaultWorkingDirectory: string): string {
@@ -511,7 +549,7 @@ export default class TerminalService implements TokenRingService {
         continue;
       }
 
-      if (!inBacktick && char === "\"" && !inSingleQuote) {
+      if (!inBacktick && char === '"' && !inSingleQuote) {
         inDoubleQuote = !inDoubleQuote;
         current += char;
         continue;
@@ -576,7 +614,7 @@ export default class TerminalService implements TokenRingService {
         continue;
       }
 
-      if (char === "\"" && !inSingleQuote) {
+      if (char === '"' && !inSingleQuote) {
         inDoubleQuote = !inDoubleQuote;
         continue;
       }
@@ -597,7 +635,7 @@ export default class TerminalService implements TokenRingService {
     const tokens = this.tokenizeCommand(command);
 
     for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i];
+      const token = tokens[i]!;
 
       if (this.isRedirectionToken(token)) {
         if (this.requiresRedirectionTarget(token)) {
@@ -637,7 +675,7 @@ export default class TerminalService implements TokenRingService {
     };
 
     for (let i = 0; i < command.length; i++) {
-      const char = command[i];
+      const char = command[i]!;
 
       if (escaped) {
         current += char;
@@ -657,7 +695,7 @@ export default class TerminalService implements TokenRingService {
         continue;
       }
 
-      if (!inBacktick && char === "\"" && !inSingleQuote) {
+      if (!inBacktick && char === '"' && !inSingleQuote) {
         inDoubleQuote = !inDoubleQuote;
         current += char;
         continue;
@@ -697,7 +735,7 @@ export default class TerminalService implements TokenRingService {
     if (token.length >= 2) {
       const first = token[0];
       const last = token[token.length - 1];
-      if ((first === "\"" && last === "\"") || (first === "'" && last === "'")) {
+      if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
         return token.slice(1, -1);
       }
     }

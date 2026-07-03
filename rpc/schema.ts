@@ -1,7 +1,16 @@
-import { AgentNotFoundSchema } from "@tokenring-ai/agent/schema";
 import { z } from "zod";
+import { AgentNotFoundSchema, ProviderNotFoundSchema, SuccessSchema } from "../../rpc/types.ts";
 import type { RPCSchema } from "../../rpc/types.ts";
 import { TerminalSessionSummarySchema } from "../schema.ts";
+
+export const TerminalNotFoundSchema = z.object({
+  status: z.literal("terminalNotFound"),
+});
+export type TerminalNotFound = z.infer<typeof TerminalNotFoundSchema>;
+export const TerminalNotInteractiveSchema = z.object({
+  status: z.literal("terminalNotInteractive"),
+});
+export type TerminalNotInteractive = z.infer<typeof TerminalNotInteractiveSchema>;
 
 export default {
   name: "Terminal RPC",
@@ -12,18 +21,24 @@ export default {
       input: z.object({
         agentId: z.string().exactOptional(),
       }),
-      result: z.object({
-        terminals: z.array(TerminalSessionSummarySchema),
-      }),
+      result: z.discriminatedUnion("status", [
+        SuccessSchema.extend({
+          terminals: z.array(TerminalSessionSummarySchema),
+        }),
+        AgentNotFoundSchema,
+      ]),
     },
     streamTerminals: {
       type: "stream",
       input: z.object({
         agentId: z.string().exactOptional(),
       }),
-      result: z.object({
-        terminals: z.array(TerminalSessionSummarySchema),
-      }),
+      result: z.discriminatedUnion("status", [
+        SuccessSchema.extend({
+          terminals: z.array(TerminalSessionSummarySchema),
+        }),
+        AgentNotFoundSchema,
+      ]),
     },
     spawnTerminal: {
       type: "mutation",
@@ -31,12 +46,16 @@ export default {
         agentId: z.string().exactOptional(),
         providerName: z.string().exactOptional(),
         connectToAgent: z.boolean().exactOptional(),
-        isolation: z.enum(["none", "sandbox","container","auto"]).default("auto"),
+        isolation: z.enum(["none", "sandbox", "container", "auto"]).default("auto"),
         workingDirectory: z.string().exactOptional(),
       }),
-      result: z.object({
-        terminalName: z.string(),
-      }),
+      result: z.discriminatedUnion("status", [
+        SuccessSchema.extend({
+          terminalName: z.string(),
+        }),
+        ProviderNotFoundSchema,
+        AgentNotFoundSchema,
+      ]),
     },
     attachTerminal: {
       type: "mutation",
@@ -45,13 +64,7 @@ export default {
         terminalName: z.string(),
         fromPosition: z.number().exactOptional(),
       }),
-      result: z.discriminatedUnion("status", [
-        z.object({
-          status: z.literal("success"),
-          success: z.boolean(),
-        }),
-        AgentNotFoundSchema,
-      ]),
+      result: z.discriminatedUnion("status", [SuccessSchema, TerminalNotFoundSchema, AgentNotFoundSchema]),
     },
     detachTerminal: {
       type: "mutation",
@@ -59,13 +72,7 @@ export default {
         agentId: z.string(),
         terminalName: z.string(),
       }),
-      result: z.discriminatedUnion("status", [
-        z.object({
-          status: z.literal("success"),
-          success: z.boolean(),
-        }),
-        AgentNotFoundSchema,
-      ]),
+      result: z.discriminatedUnion("status", [SuccessSchema, TerminalNotFoundSchema, AgentNotFoundSchema]),
     },
     sendInput: {
       type: "mutation",
@@ -73,9 +80,7 @@ export default {
         terminalName: z.string(),
         input: z.string(),
       }),
-      result: z.object({
-        success: z.boolean(),
-      }),
+      result: z.discriminatedUnion("status", [SuccessSchema, TerminalNotFoundSchema, TerminalNotInteractiveSchema]),
     },
     retrieveOutput: {
       type: "query",
@@ -87,11 +92,15 @@ export default {
         maxInterval: z.number().default(0),
         cropOutput: z.number().exactOptional(),
       }),
-      result: z.object({
-        output: z.string(),
-        position: z.number(),
-        complete: z.boolean(),
-      }),
+      result: z.discriminatedUnion("status", [
+        SuccessSchema.extend({
+          output: z.string(),
+          position: z.number(),
+          complete: z.boolean(),
+        }),
+        TerminalNotInteractiveSchema,
+        TerminalNotFoundSchema,
+      ]),
     },
     streamTerminalOutput: {
       type: "stream",
@@ -100,15 +109,12 @@ export default {
         fromPosition: z.number().default(0),
       }),
       result: z.discriminatedUnion("status", [
-        z.object({
-          status: z.literal("success"),
+        SuccessSchema.extend({
           output: z.string(),
           position: z.number(),
           complete: z.boolean(),
         }),
-        z.object({
-          status: z.literal("terminalNotFound"),
-        }),
+        TerminalNotFoundSchema,
       ]),
     },
     getCompleteOutput: {
@@ -116,18 +122,23 @@ export default {
       input: z.object({
         terminalName: z.string(),
       }),
-      result: z.object({
-        output: z.string(),
-      }),
+      result: z.discriminatedUnion("status", [
+        SuccessSchema.extend({
+          output: z.string(),
+          newPosition: z.number(),
+          isComplete: z.boolean(),
+          exitCode: z.number().optional(),
+        }),
+        TerminalNotInteractiveSchema,
+        TerminalNotFoundSchema,
+      ]),
     },
     terminateTerminal: {
       type: "mutation",
       input: z.object({
         terminalName: z.string(),
       }),
-      result: z.object({
-        success: z.boolean(),
-      }),
+      result: z.discriminatedUnion("status", [SuccessSchema, TerminalNotInteractiveSchema, TerminalNotFoundSchema]),
     },
   },
 } satisfies RPCSchema;

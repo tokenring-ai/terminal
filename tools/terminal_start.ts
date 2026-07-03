@@ -38,6 +38,12 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
     ...interactiveConfig,
   });
 
+  if (result.status === "terminalNotFound") {
+    return "Terminal not found";
+  } else if (result.status === "terminalNotInteractive") {
+    return "Terminal is not interactive";
+  }
+
   const runTime = Math.floor(Date.now() - startTime);
 
   terminalService.requireAgentRecord(terminalName, agent).lastPosition = result.position;

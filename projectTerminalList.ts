@@ -2,11 +2,7 @@ import { stripUndefinedKeys } from "@tokenring-ai/utility/object/stripObject";
 import type { ParsedTerminalSessionSummary } from "./schema.ts";
 import type TerminalService from "./TerminalService.ts";
 
-export type TerminalListProjection = {
-  terminals: ParsedTerminalSessionSummary[];
-};
-
-export function projectTerminalList(terminalService: TerminalService, agentId?: string): TerminalListProjection {
+export function projectTerminalList(terminalService: TerminalService, agentId?: string): ParsedTerminalSessionSummary[] {
   const terminals: ParsedTerminalSessionSummary[] = [];
 
   for (const [, item] of terminalService.getAllTerminalSessions()) {
@@ -47,5 +43,5 @@ export function projectTerminalList(terminalService: TerminalService, agentId?: 
     );
   }
 
-  return { terminals };
+  return terminals;
 }
