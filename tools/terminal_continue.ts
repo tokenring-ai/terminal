@@ -35,7 +35,7 @@ export async function execute({ terminalName, stdin }: z.output<typeof inputSche
   return `
 ${stdin ? `> ${stdin}` : ""}
 ---
-${result.output ?? "[No additional output]"}
+${result.output}
 ---
 
 [${runTime}ms]

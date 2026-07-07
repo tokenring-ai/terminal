@@ -83,17 +83,17 @@ export default createRPCEndpoint(TerminalRpcSchema, {
 
   async retrieveOutput(args, app) {
     return await app.requireService(TerminalService).readOutput(args.terminalName, {
-      fromPosition: args.fromPosition ?? 0,
-      minInterval: args.minInterval ?? 0,
-      settleInterval: args.settleInterval ?? 0,
-      maxInterval: args.maxInterval ?? 0,
+      fromPosition: args.fromPosition,
+      minInterval: args.minInterval,
+      settleInterval: args.settleInterval,
+      maxInterval: args.maxInterval,
       ...(args.cropOutput && { cropOutput: args.cropOutput }),
     });
   },
 
   async *streamTerminalOutput(args, app, signal) {
     const terminalService = app.requireService(TerminalService);
-    for await (const chunk of terminalService.subscribeOutputAsync(args.terminalName, args.fromPosition ?? 0, signal)) {
+    for await (const chunk of terminalService.subscribeOutputAsync(args.terminalName, args.fromPosition, signal)) {
       yield chunk;
     }
   },

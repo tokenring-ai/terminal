@@ -1,5 +1,6 @@
 import type Agent from "@tokenring-ai/agent/Agent";
 import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { ToolCallError } from "@tokenring-ai/chat/util/tokenRingTool";
 import { z } from "zod";
 import TerminalService from "../TerminalService.ts";
 
@@ -10,11 +11,17 @@ export async function execute({ terminalName }: z.output<typeof inputSchema>, ag
   const terminalService = agent.requireServiceByType(TerminalService);
 
   const completeOutput = await terminalService.readFullOutput(terminalName);
+  if (completeOutput.status === "terminalNotInteractive") {
+    throw new ToolCallError(name, `Terminal ${terminalName} is not interactive`);
+  }
+  if (completeOutput.status === "terminalNotFound") {
+    throw new ToolCallError(name, `Terminal ${terminalName} not found`);
+  }
 
   return `
 Terminal Session: ${terminalName}
 Complete Output:
-${completeOutput}
+${completeOutput.output}
 `.trim();
 }
 

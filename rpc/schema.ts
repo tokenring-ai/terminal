@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { AgentNotFoundSchema, ProviderNotFoundSchema, SuccessSchema } from "../../rpc/types.ts";
 import type { RPCSchema } from "../../rpc/types.ts";
+import { AgentNotFoundSchema, ProviderNotFoundSchema, SuccessSchema } from "../../rpc/types.ts";
 import { TerminalSessionSummarySchema } from "../schema.ts";
 
 export const TerminalNotFoundSchema = z.object({

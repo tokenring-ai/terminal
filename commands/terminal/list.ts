@@ -24,7 +24,7 @@ export default {
           const uptime = Math.floor((Date.now() - terminalSession.startTime) / 1000);
           return [
             terminalName,
-            (terminalSession?.lastInput ?? "[No Input]").substring(0, 30),
+            (terminalSession.lastInput ?? "[No Input]").substring(0, 30),
             `${uptime}s`,
             Array.from(terminalSession.connectedAgents.keys()).join(", "),
           ];

@@ -12,6 +12,5 @@ export default {
 
 /terminal provider get`,
   inputSchema,
-  execute: async ({ agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> =>
-    `Current provider: ${agent.getState(TerminalState).providerName ?? "(none)"}`,
+  execute: async ({ agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => `Current provider: ${agent.getState(TerminalState).providerName}`,
 } satisfies TokenRingAgentCommand<typeof inputSchema>;

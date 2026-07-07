@@ -17,7 +17,7 @@ export class TerminalState extends AgentStateSlice<typeof serializationSchema> {
 
   constructor(readonly initialConfig: z.output<typeof TerminalConfigSchema>["agentDefaults"]) {
     super("TerminalState", serializationSchema);
-    this.providerName = initialConfig.provider ?? null;
+    this.providerName = initialConfig.provider;
     this.workingDirectory = initialConfig.workingDirectory;
     this.bash = initialConfig.bash;
     this.interactiveConfig = initialConfig.interactive;

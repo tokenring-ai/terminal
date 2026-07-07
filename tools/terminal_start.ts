@@ -1,5 +1,6 @@
 import type Agent from "@tokenring-ai/agent/Agent";
 import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { ToolCallError } from "@tokenring-ai/chat/util/tokenRingTool";
 import { z } from "zod";
 import { TerminalState } from "../state/terminalState.ts";
 import TerminalService from "../TerminalService.ts";
@@ -15,7 +16,7 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
       ? `Allow the agent to start a un-sandboxed, unrestricted, 100% dangerous interactive terminal session under your user account?`
       : `Allow the agent to start a sandboxed, but still potentially dangerous interactive terminal session under your user account?`,
   });
-  if (!confirmed) throw new Error("User did not approve terminal creation");
+  if (!confirmed) throw new ToolCallError(name, "User did not approve terminal creation");
 
   const activeTerminalProvider = terminalService.requireActiveProvider(agent);
   const workingDirectory = terminalService.getWorkingDirectory(agent);
@@ -51,7 +52,7 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
   return `
 $ ${command.trim()}
 ---
-${result.output ?? "[No output]"}
+${result.output}
 ---
 [${runTime}ms]
 ${result.complete ? "Terminal was closed" : `Terminal is still running. Use terminal_continue with terminalName: ${terminalName} to continue interacting with the terminal, and stop the terminal with terminal_stop once you are done using it.`}

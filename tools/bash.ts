@@ -1,5 +1,6 @@
 import type Agent from "@tokenring-ai/agent/Agent";
 import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
+import { ToolCallError } from "@tokenring-ai/chat/util/tokenRingTool";
 import { joinArrayable } from "@tokenring-ai/utility/array/arrayable";
 import intelligentTruncate from "@tokenring-ai/utility/string/intelligentTruncate";
 import { z } from "zod";
@@ -14,12 +15,12 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
   const bashOptions = agent.getState(TerminalState).bash;
 
   if (!command) {
-    throw new Error(`[${name}] command is required`);
+    throw new ToolCallError(name, `command is required`);
   }
 
   const cmdString = joinArrayable(command, " ").trim();
   if (!cmdString) {
-    throw new Error(`[${name}] command is required`);
+    throw new ToolCallError(name, `command is required`);
   }
 
   agent.infoMessage(`Running ${cmdString}`);
@@ -31,7 +32,7 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
       timeout: 10,
     });
 
-    if (!confirmed) throw new Error("User did not approve command execution");
+    if (!confirmed) throw new ToolCallError(name, "User did not approve command execution");
   } else {
     const commandSafetyLevel = terminal.getCommandSafetyLevel(cmdString);
     if (commandSafetyLevel !== "safe") {
@@ -65,14 +66,14 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
       if (result === null || result.length === 0) {
         // Approval was cancelled
         agent.abortCurrentOperation("Command execution approval was cancelled by user");
-        throw new Error("User cancelled the operation");
+        throw new ToolCallError(name, "User cancelled the operation");
       } else if (result[0] === "Not approved") {
-        throw new Error("User did not approve command execution");
+        throw new ToolCallError(name, "User did not approve command execution");
       } else if (result[0] === "Outside Sandbox") {
         disableSandbox = true;
       } else if (result[0] !== "In Sandbox") {
         agent.abortCurrentOperation(`Invalid approval response received: ${result[0]}`);
-        throw new Error("Invalid approval response received");
+        throw new ToolCallError(name, "Invalid approval response received");
       }
     }
   }
@@ -112,7 +113,7 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
       break;
     default: {
       const exhaustive: any = result satisfies never;
-      throw new Error(`[${name}] Unknown result status: ${exhaustive.status}`);
+      throw new ToolCallError(name, `Unknown result status: ${exhaustive.status}`);
     }
   }
 

@@ -1,23 +1,21 @@
+import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import type Agent from "@tokenring-ai/agent/Agent";
 import type { AgentCreationContext } from "@tokenring-ai/agent/types";
 import type { TokenRingService } from "@tokenring-ai/app/types";
+import { ConfigurationError } from "@tokenring-ai/app/types";
 import deepClone from "@tokenring-ai/utility/object/deepClone";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
 import { generateHumanId } from "@tokenring-ai/utility/string/generateHumanId";
-import { deepEquals } from "bun";
 import type { MaybePromise } from "bun";
-import path from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
+import { deepEquals } from "bun";
 import type { z } from "zod";
 import { projectTerminalList } from "./projectTerminalList.ts";
-import type { TerminalNotInteractive } from "./rpc/schema.ts";
-import type { TerminalNotFound } from "./rpc/schema.ts";
+import type { TerminalNotFound, TerminalNotInteractive } from "./rpc/schema.ts";
 import type { ParsedTerminalSessionSummary } from "./schema.ts";
 import { TerminalAgentConfigSchema, type TerminalConfigSchema } from "./schema.ts";
 import { TerminalState } from "./state/terminalState.ts";
-import type { InteractiveTerminalOutput } from "./TerminalProvider.ts";
-import type { TerminalIsolationLevel } from "./TerminalProvider.ts";
-import type { ExecuteCommandOptions, ExecuteCommandResult, TerminalProvider } from "./TerminalProvider.ts";
+import type { ExecuteCommandOptions, ExecuteCommandResult, InteractiveTerminalOutput, TerminalIsolationLevel, TerminalProvider } from "./TerminalProvider.ts";
 
 type SuccessResult = { status: "success" };
 
@@ -107,7 +105,6 @@ export default class TerminalService implements TokenRingService {
     let pending = true;
     let resolveNext: (() => void) | null = null;
     let lastSnapshot: ParsedTerminalSessionSummary[] | undefined;
-    let statusPollTimer: ReturnType<typeof setInterval> | null = null;
 
     const listener = () => {
       pending = true;
@@ -116,7 +113,7 @@ export default class TerminalService implements TokenRingService {
     };
 
     this.terminalListeners.add(listener);
-    statusPollTimer = setInterval(listener, 500);
+    const statusPollTimer = setInterval(listener, 500);
 
     const abortHandler = () => {
       resolveNext?.();
@@ -126,12 +123,14 @@ export default class TerminalService implements TokenRingService {
     signal.addEventListener("abort", abortHandler);
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- can be mutated asynchronously
       while (!signal.aborted) {
         if (!pending) {
           await new Promise<void>(resolve => {
             resolveNext = resolve;
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- can be mutated asynchronously
         if (signal.aborted) {
           break;
         }
@@ -145,6 +144,7 @@ export default class TerminalService implements TokenRingService {
         yield snapshot;
       }
     } finally {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- can be mutated asynchronously
       if (statusPollTimer) {
         clearInterval(statusPollTimer);
       }
@@ -157,7 +157,7 @@ export default class TerminalService implements TokenRingService {
     const config = deepClone(this.options.agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
     const initialState = agent.initializeState(TerminalState, config);
 
-    const providerName = initialState.providerName ?? this.options.agentDefaults.provider;
+    const providerName = initialState.providerName;
     const terminalProvider = this.terminalProviderRegistry.get(providerName);
     creationContext.items.push(`Terminal Provider: ${terminalProvider?.displayName ?? "(none)"}`);
   }
@@ -175,7 +175,7 @@ export default class TerminalService implements TokenRingService {
 
   requireActiveProviderName(agent: Agent): string {
     const { providerName } = agent.getState(TerminalState);
-    if (!providerName) throw new Error("No terminal provider configured for agent");
+    if (!providerName) throw new ConfigurationError(this.name, "No terminal provider configured for agent");
     return providerName;
   }
 
@@ -203,7 +203,7 @@ export default class TerminalService implements TokenRingService {
     const session = this.terminalSessionRegistry.require(terminalName);
     const record = session.connectedAgents.get(agent.id);
     if (!record) {
-      throw new Error(`Agent ${agent.id} is not connected to terminal ${terminalName}`);
+      throw new ConfigurationError(this.name, `Agent ${agent.id} is not connected to terminal ${terminalName}`);
     }
     return record;
   }
@@ -216,7 +216,7 @@ export default class TerminalService implements TokenRingService {
   async disconnectAgentFromSession(terminalName: string, agent: Agent): Promise<{ deleted: boolean }> {
     const session = this.terminalSessionRegistry.get(terminalName);
     if (!session) {
-      throw new Error(`Terminal '${terminalName}' not found`);
+      throw new ConfigurationError(this.name, `Terminal '${terminalName}' not found`);
     }
 
     const deleted = session.connectedAgents.delete(agent.id);
@@ -230,7 +230,7 @@ export default class TerminalService implements TokenRingService {
   async createSession({ providerName, workingDirectory, isolation, attachToAgent }: SpawnTerminalOptions): Promise<string> {
     const provider = this.terminalProviderRegistry.require(providerName);
     if (!provider.isInteractive) {
-      throw new Error(`Provider '${providerName}' does not support interactive sessions`);
+      throw new ConfigurationError(this.name, `Provider '${providerName}' does not support interactive sessions`);
     }
 
     if (isolation === "auto") {
@@ -302,17 +302,18 @@ export default class TerminalService implements TokenRingService {
     let lastCheckTime = Date.now();
     let lastOutputLength = fromPosition;
 
-    const initialStatus = provider.getSessionStatus?.(terminal.providerSessionId);
+    const initialStatus = provider.getSessionStatus(terminal.providerSessionId);
     if (initialStatus && initialStatus.outputLength > lastOutputLength) {
       lastOutputLength = initialStatus.outputLength;
       lastCheckTime = Date.now();
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runs forever
     while (true) {
       const elapsed = (Date.now() - startTime) / 1000;
       if (elapsed >= maxInterval) break;
 
-      const status = provider.getSessionStatus?.(terminal.providerSessionId);
+      const status = provider.getSessionStatus(terminal.providerSessionId);
       if (status) {
         if (status.outputLength > lastOutputLength) {
           lastOutputLength = status.outputLength;
@@ -353,7 +354,7 @@ export default class TerminalService implements TokenRingService {
 
     const provider = this.requireProviderByName(session.providerName);
     if (!provider.isInteractive) {
-      throw new Error(`Provider '${session.providerName}' does not support interactive sessions`);
+      throw new ConfigurationError(this.name, `Provider '${session.providerName}' does not support interactive sessions`);
     }
 
     let position = fromPosition;
@@ -365,7 +366,7 @@ export default class TerminalService implements TokenRingService {
         return;
       }
 
-      const status = provider.getSessionStatus?.(session.providerSessionId);
+      const status = provider.getSessionStatus(session.providerSessionId);
       const hasNewOutput = status ? status.outputLength > position : true;
       const sessionEnded = status ? !status.running : false;
 
@@ -493,7 +494,7 @@ export default class TerminalService implements TokenRingService {
   private requireSession(name: string): TerminalSessionRecord {
     const terminal = this.terminalSessionRegistry.get(name);
     if (!terminal) {
-      throw new Error(`Terminal ${name} not found`);
+      throw new ConfigurationError(this.name, `Terminal ${name} not found`);
     }
     return terminal;
   }
