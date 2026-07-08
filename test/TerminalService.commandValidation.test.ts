@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import TerminalService from "../TerminalService.ts";
-import createTestTerminal from "./createTestTerminal.ts";
+import createTestTerminal from "./createTestTerminal.test";
 
 /**
  * Test suite for TerminalService command validation functionality
