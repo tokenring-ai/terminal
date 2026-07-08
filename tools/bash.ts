@@ -106,7 +106,16 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
       }
       break;
     case "timeout":
-      resultText += "[timeout: The command took too long to complete, and timed out]";
+      {
+        const croppedOutput = intelligentTruncate(result.output, {
+          maxLength: bashOptions.cropOutput,
+          suffix: "\n [...Results were too long, truncated...]",
+        }).trim();
+
+        resultText += croppedOutput
+          ? `${croppedOutput}\n[timeout: The command took too long to complete, and timed out | ${runTime}ms]`
+          : `[timeout: The command took too long to complete, and timed out | ${runTime}ms]`;
+      }
       break;
     case "unknownError":
       resultText += `[error: ${result.error}]`;

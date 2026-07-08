@@ -26,6 +26,7 @@ export type ExecuteCommandResult =
     }
   | {
       status: "timeout";
+      output: string;
     }
   | {
       status: "unknownError";
