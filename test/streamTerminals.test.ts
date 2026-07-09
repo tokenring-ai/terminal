@@ -4,6 +4,7 @@ import createLocalRPCClient from "@tokenring-ai/rpc/createLocalRPCClient";
 import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import terminalRPC from "../rpc/terminal.ts";
+import TerminalRpcSchema from "../rpc/schema.ts";
 import { TerminalConfigSchema } from "../schema.ts";
 import TerminalService from "../TerminalService.ts";
 import { TestTerminalProvider } from "./TestTerminalProvider.test.ts";
@@ -22,14 +23,12 @@ const testConfig = {
       maxInterval: 0,
     },
   },
-  safeCommands: TerminalConfigSchema.shape.safeCommands.defaultValues,
-  dangerousCommands: TerminalConfigSchema.shape.dangerousCommands.defaultValues,
 } satisfies z.input<typeof TerminalConfigSchema>;
 
 describe("streamTerminals", () => {
   let app: ReturnType<typeof createTestingApp>;
   let agent: ReturnType<typeof createTestingAgent>;
-  let rpc: ReturnType<typeof createLocalRPCClient<typeof terminalRPC>>;
+  let rpc: ReturnType<typeof createLocalRPCClient<typeof TerminalRpcSchema>>;
 
   beforeEach(() => {
     app = createTestingApp();
@@ -46,20 +45,26 @@ describe("streamTerminals", () => {
     const stream = rpc.streamTerminals({}, controller.signal);
 
     const first = await stream.next();
-    expect(first.value).toEqual({ terminals: [] });
+    const firstValue = first.value as { status: string; terminals: Array<{ name: string }> } | undefined;
+    expect(firstValue).toEqual({ status: "success", terminals: [] });
 
-    const { terminalName } = await rpc.spawnTerminal({});
+    const spawnResult = await rpc.spawnTerminal({});
+    if (spawnResult.status !== "success") throw new Error("failed to spawn terminal");
+    const { terminalName } = spawnResult;
     const second = await stream.next();
-    expect(second.value?.terminals.map(item => item.name)).toContain(terminalName);
+    const secondValue = second.value as { status: string; terminals: Array<{ name: string }> } | undefined;
+    expect(secondValue?.terminals.map(item => item.name)).toContain(terminalName);
 
     await rpc.attachTerminal({ agentId: agent.id, terminalName });
     const filtered = rpc.streamTerminals({ agentId: agent.id }, new AbortController().signal);
     const filteredFirst = await filtered.next();
-    expect(filteredFirst.value?.terminals.map(item => item.name)).toContain(terminalName);
+    const filteredFirstValue = filteredFirst.value as { status: string; terminals: Array<{ name: string }> } | undefined;
+    expect(filteredFirstValue?.terminals.map(item => item.name)).toContain(terminalName);
 
     await rpc.terminateTerminal({ terminalName });
     const third = await stream.next();
-    expect(third.value).toEqual({ terminals: [] });
+    const thirdValue = third.value as { status: string; terminals: Array<{ name: string }> } | undefined;
+    expect(thirdValue).toEqual({ status: "success", terminals: [] });
 
     controller.abort();
     await stream.return(undefined);

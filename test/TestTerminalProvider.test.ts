@@ -1,21 +1,22 @@
 import type {
   ExecuteCommandOptions,
   ExecuteCommandResult,
+  InteractiveTerminalOptions,
   InteractiveTerminalOutput,
+  InteractiveTerminalProvider,
   OutputWaitOptions,
   SessionStatus,
   TerminalIsolationLevel,
-  TerminalProvider,
 } from "../TerminalProvider.js";
 
 /**
  * TestTerminalProvider is a mock implementation of TerminalProvider for testing purposes.
  * It simulates terminal operations without actually executing commands.
  */
-export class TestTerminalProvider implements TerminalProvider {
+export class TestTerminalProvider implements InteractiveTerminalProvider {
   readonly displayName = "Test Terminal Provider";
   readonly isInteractive = true as const;
-  readonly supportedIsolationLevels: TerminalIsolationLevel[] = ["sandbox", "host", "container"];
+  readonly supportedIsolationLevels: TerminalIsolationLevel[] = ["none", "sandbox", "container"];
   readonly isolationLevel: TerminalIsolationLevel = "sandbox";
 
   // Internal state for tracking commands and sessions
@@ -112,7 +113,7 @@ export class TestTerminalProvider implements TerminalProvider {
     options: ExecuteCommandOptions
   ): Promise<ExecuteCommandResult> {
     // Track the command execution
-    this.executedCommands.push({ commandList: command, args, options });
+    this.executedCommands.push({ command, args, options });
 
     if (this.shouldFail) {
       return {
@@ -167,13 +168,13 @@ export class TestTerminalProvider implements TerminalProvider {
   }
 
   async startInteractiveSession(
-    options: ExecuteCommandOptions
+    options: InteractiveTerminalOptions
   ): Promise<string> {
     const sessionId = `session-${this.nextSessionId++}`;
     const command = options.workingDirectory || "default-command";
 
     this.sessions.set(sessionId, {
-      commandList: command,
+      command,
       output: "",
       position: 0,
       running: true,

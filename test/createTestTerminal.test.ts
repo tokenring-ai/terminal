@@ -19,13 +19,6 @@ const testConfig = {
       maxInterval: 30,
     },
   },
-  providers: {
-    test: {
-      type: "test",
-    }
-  },
-  safeCommands: TerminalConfigSchema.shape.safeCommands.defaultValues,
-  dangerousCommands: TerminalConfigSchema.shape.dangerousCommands.defaultValues,
 } satisfies z.input<typeof TerminalConfigSchema>;
 
 // Create a test instance of TerminalService
