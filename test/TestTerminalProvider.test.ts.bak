@@ -48,7 +48,11 @@ export class TestTerminalProvider implements InteractiveTerminalProvider {
   /**
    * Configure the test provider behavior
    */
-  configure(options: { defaultExitCode?: number; defaultOutput?: string; shouldFail?: boolean }): void {
+  configure(options: {
+    defaultExitCode?: number;
+    defaultOutput?: string;
+    shouldFail?: boolean;
+  }): void {
     if (options.defaultExitCode !== undefined) {
       this.defaultExitCode = options.defaultExitCode;
     }
@@ -103,7 +107,11 @@ export class TestTerminalProvider implements InteractiveTerminalProvider {
     return this.isolationLevel;
   }
 
-  async executeCommand(command: string, args: string[], options: ExecuteCommandOptions): Promise<ExecuteCommandResult> {
+  async executeCommand(
+    command: string,
+    args: string[],
+    options: ExecuteCommandOptions
+  ): Promise<ExecuteCommandResult> {
     // Track the command execution
     this.executedCommands.push({ command, args, options });
 
@@ -141,7 +149,10 @@ export class TestTerminalProvider implements InteractiveTerminalProvider {
     };
   }
 
-  async runScript(script: string, _options: ExecuteCommandOptions): Promise<ExecuteCommandResult> {
+  async runScript(
+    script: string,
+    options: ExecuteCommandOptions
+  ): Promise<ExecuteCommandResult> {
     if (this.shouldFail) {
       return {
         status: "unknownError",
@@ -156,7 +167,9 @@ export class TestTerminalProvider implements InteractiveTerminalProvider {
     };
   }
 
-  async startInteractiveSession(options: InteractiveTerminalOptions): Promise<string> {
+  async startInteractiveSession(
+    options: InteractiveTerminalOptions
+  ): Promise<string> {
     const sessionId = `session-${this.nextSessionId++}`;
     const command = options.workingDirectory || "default-command";
 
@@ -180,7 +193,11 @@ export class TestTerminalProvider implements InteractiveTerminalProvider {
     session.output += `\n${input}`;
   }
 
-  async collectOutput(sessionId: string, fromPosition: number, _waitOptions: OutputWaitOptions): Promise<InteractiveTerminalOutput> {
+  async collectOutput(
+    sessionId: string,
+    fromPosition: number,
+    _waitOptions: OutputWaitOptions
+  ): Promise<InteractiveTerminalOutput> {
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error(`Session ${sessionId} not found`);

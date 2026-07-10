@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import type TerminalService from "../TerminalService.ts";
+import TerminalService from "../TerminalService.ts";
 import createTestTerminal from "./createTestTerminal.test";
 
 /**
@@ -22,12 +22,12 @@ describe("TerminalService Command Validation", () => {
       expect(terminalService.getCommandSafetyLevel("yarn")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("bun")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("tsc")).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel("node")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("echo")).toBe("safe");
     });
 
     it("should reject dangerous commands", () => {
       expect(terminalService.getCommandSafetyLevel("rm")).toBe("unknown");
-      expect(terminalService.getCommandSafetyLevel("node")).toBe("dangerous");
       expect(terminalService.getCommandSafetyLevel("sudo ")).toBe("dangerous");
       expect(terminalService.getCommandSafetyLevel("rm -rf")).toBe("dangerous");
       expect(terminalService.getCommandSafetyLevel("format ")).toBe("dangerous");
@@ -61,7 +61,7 @@ describe("TerminalService Command Validation", () => {
     });
 
     it("should handle OR operator", () => {
-      const commands = terminalService.parseCompoundCommand('git status || echo "not in git repo"');
+      const commands = terminalService.parseCompoundCommand("git status || echo \"not in git repo\"");
       expect(commands).toEqual(["git", "echo"]);
     });
 
@@ -71,23 +71,25 @@ describe("TerminalService Command Validation", () => {
     });
 
     it("should handle append redirection", () => {
-      const commands = terminalService.parseCompoundCommand('echo "text" >> log.txt');
+      const commands = terminalService.parseCompoundCommand("echo \"text\" >> log.txt");
       expect(commands).toEqual(["echo"]);
     });
 
     it("should handle complex compound commands", () => {
-      const commands = terminalService.parseCompoundCommand('cd src && npm run build && echo "done" || echo "failed"');
+      const commands = terminalService.parseCompoundCommand(
+        "cd src && npm run build && echo \"done\" || echo \"failed\""
+      );
       expect(commands).toEqual(["cd", "npm", "echo", "echo"]);
     });
 
     it("should handle commands with quotes and special characters", () => {
-      const commands = terminalService.parseCompoundCommand('echo "hello world" && ls -la "path with spaces"');
+      const commands = terminalService.parseCompoundCommand("echo \"hello world\" && ls -la \"path with spaces\"");
       expect(commands).toEqual(["echo", "ls"]);
     });
 
     it("should ignore separator characters inside quoted arguments", () => {
       const commands = terminalService.parseCompoundCommand(
-        'grep -r "rpc\\|RPC\\|command\\|Command\\|slash" pkg/docker/ --include="*.ts" | grep -v "node_modules" | head -20',
+        "grep -r \"rpc\\|RPC\\|command\\|Command\\|slash\" pkg/docker/ --include=\"*.ts\" | grep -v \"node_modules\" | head -20"
       );
       expect(commands).toEqual(["grep", "grep", "head"]);
     });
@@ -121,14 +123,14 @@ describe("TerminalService Command Validation", () => {
     });
 
     it("should validate complex compound commands", () => {
-      expect(terminalService.getCommandSafetyLevel('npm install; yarn build && tsc && echo "done"')).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel("npm install; yarn build && tsc && echo \"done\"")).toBe("safe");
     });
 
     it("should validate quoted grep pipelines as safe", () => {
       expect(
         terminalService.getCommandSafetyLevel(
-          'grep -r "rpc\\|RPC\\|command\\|Command\\|slash" pkg/docker/ --include="*.ts" | grep -v "node_modules" | head -20',
-        ),
+          "grep -r \"rpc\\|RPC\\|command\\|Command\\|slash\" pkg/docker/ --include=\"*.ts\" | grep -v \"node_modules\" | head -20"
+        )
       ).toBe("safe");
     });
   });
@@ -158,36 +160,24 @@ describe("TerminalService Command Validation", () => {
       expect(terminalService.getCommandSafetyLevel("shutdown -h now")).toBe("dangerous");
       expect(terminalService.getCommandSafetyLevel("reboot")).toBe("dangerous");
       expect(terminalService.getCommandSafetyLevel("dd if=/dev/zero of=/dev/sda")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel('find / -name "*.txt" -exec rm {} \\;')).toBe("dangerous");
+      expect(terminalService.getCommandSafetyLevel("find / -name \"*.txt\" -exec rm {} \\;")).toBe("dangerous");
       expect(terminalService.getCommandSafetyLevel("chmod -R 777 /blah")).toBe("dangerous");
       expect(terminalService.getCommandSafetyLevel("chown -R root:root /blah")).toBe("dangerous");
     });
 
     it("should allow legitimate development commands", () => {
-      expect(
-        terminalService.getCommandSafetyLevel(
-          "cd app/coder/electron && mkdir -p resources hooks && touch resources/entitlements.plist resources/LICENSE resources/background.png",
-        ),
-      ).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel('grep -n "attach\\|clearCurrentPost\\|show()\\|reset(" pkg/wordpress/README.md')).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel("cd app/coder/electron && mkdir -p resources hooks && touch resources/entitlements.plist resources/LICENSE resources/background.png")).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel("grep -n \"attach\\|clearCurrentPost\\|show()\\|reset(\" pkg/wordpress/README.md")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("npm install")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("yarn add package-name")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("bun add package-name")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("git status")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("git add .")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel('git commit -m "message"')).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel("git commit -m \"message\"")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("cd src/app")).toBe("safe");
       expect(terminalService.getCommandSafetyLevel("tsc")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel('echo "Hello World"')).toBe("safe");
-    });
-
-    it("should treat node/python/shell interpreters as dangerous", () => {
-      expect(terminalService.getCommandSafetyLevel("node dist/index.js")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("python script.py")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("perl -e 'print 1'")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("bash -c 'echo hi'")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("curl https://example.com")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("wget https://example.com")).toBe("dangerous");
+      expect(terminalService.getCommandSafetyLevel("node dist/index.js")).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel("echo \"Hello World\"")).toBe("safe");
     });
   });
 

@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent.test";
 import createTestingApp from "@tokenring-ai/app/test/createTestingApp.test";
-import type { z } from "zod";
+import { afterEach,beforeEach,describe,expect,it,mock } from "bun:test";
+import { z } from "zod";
 import createLocalRPCClient from "../../rpc/createLocalRPCClient.ts";
-import { projectTerminalList } from "../projectTerminalList.ts";
 import terminalRPC from "../rpc/terminal.ts";
+import { projectTerminalList } from "../projectTerminalList.ts";
 import { TerminalConfigSchema } from "../schema.ts";
 import { TerminalState } from "../state/terminalState.ts";
 import type { ExecuteCommandOptions } from "../TerminalProvider.ts";
@@ -190,7 +190,7 @@ describe("TerminalService", () => {
 
   describe("Script Execution", () => {
     it("should run script successfully", async () => {
-      const script = 'echo "Hello World"\nls -la';
+      const script = "echo \"Hello World\"\nls -la";
       const result = await terminalService.runScript(script, {}, agent);
 
       expect(result.status).toBe("success");

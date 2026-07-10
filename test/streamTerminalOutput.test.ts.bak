@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it } from "bun:test";
 import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent.test";
 import createTestingApp from "@tokenring-ai/app/test/createTestingApp.test";
 import createLocalRPCClient from "@tokenring-ai/rpc/createLocalRPCClient";
-import type { z } from "zod";
-import type TerminalRpcSchema from "../rpc/schema.ts";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { z } from "zod";
 import terminalRPC from "../rpc/terminal.ts";
+import TerminalRpcSchema from "../rpc/schema.ts";
 import { TerminalConfigSchema } from "../schema.ts";
 import TerminalService from "../TerminalService.ts";
 import { TestTerminalProvider } from "./TestTerminalProvider.test.ts";
