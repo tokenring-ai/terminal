@@ -11,7 +11,10 @@ export async function execute({ terminalName }: z.output<typeof inputSchema>, ag
 
   const result = await terminalService.disconnectAgentFromSession(terminalName, agent);
 
-  return `Terminal ${terminalName} ${result.deleted ? "detached & terminated." : "detached"}`;
+  return {
+    message: `**Terminal** Stopped terminal ${terminalName}`,
+    result: `Terminal ${terminalName} ${result.deleted ? "detached & terminated." : "detached"}`,
+  };
 }
 
 const description = "Terminate a persistent terminal session.";

@@ -25,14 +25,24 @@ export async function execute({ terminalName, stdin }: z.output<typeof inputSche
   const runTime = Math.floor(Date.now() - startTime);
 
   if (result.status === "terminalNotInteractive") {
-    return "Terminal is not interactive";
+    return {
+      failed: true,
+      message: `**Terminal** Interacted with terminal ${terminalName}`,
+      result: "Terminal is not interactive",
+    };
   } else if (result.status === "terminalNotFound") {
-    return "Terminal not found";
+    return {
+      failed: true,
+      message: `**Terminal** Interacted with terminal ${terminalName}`,
+      result: "Terminal not found",
+    };
   }
 
   terminal.requireAgentRecord(terminalName, agent).lastPosition = result.position;
 
-  return `
+  return {
+    message: `**Terminal** Interacted with terminal ${terminalName}`,
+    result: `
 ${stdin ? `> ${stdin}` : ""}
 ---
 ${result.output}
@@ -40,7 +50,8 @@ ${result.output}
 
 [${runTime}ms]
 ${result.complete ? "Terminal was closed" : `Terminal is still running`}
-`.trim();
+`.trim(),
+  };
 }
 
 const description = `Continue interaction with an EXISTING persistent terminal session.

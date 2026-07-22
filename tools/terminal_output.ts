@@ -18,11 +18,14 @@ export async function execute({ terminalName }: z.output<typeof inputSchema>, ag
     throw new ToolCallError(name, `Terminal ${terminalName} not found`);
   }
 
-  return `
+  return {
+    message: `**Terminal** Retrieved terminal output for ${terminalName}`,
+    result: `
 Terminal Session: ${terminalName}
 Complete Output:
 ${completeOutput.output}
-`.trim();
+`.trim(),
+  };
 }
 
 const description = `Get the complete output from an EXISTING persistent terminal session without truncation.

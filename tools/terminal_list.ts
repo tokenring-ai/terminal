@@ -13,19 +13,24 @@ export function execute(_: z.output<typeof inputSchema>, agent: Agent): TokenRin
   const connectedTerminals = terminalService.getAllTerminalSessions().filter(([, terminalSession]) => terminalSession.connectedAgents.has(agent.id));
 
   if (connectedTerminals.length === 0) {
-    return "No attached terminals.";
+    return {
+      message: `**Terminal** Listed 0 terminals`,
+      result: "No attached terminals.",
+    };
   }
 
-  return (
-    "Attached Terminals:\n" +
-    markdownTable(
-      ["Name", "Last Input", "Uptime"],
-      connectedTerminals.map(([terminalName, terminalSession]) => {
-        const uptime = Math.floor((Date.now() - terminalSession.startTime) / 1000);
-        return [terminalName, (terminalSession.lastInput ?? "[No Input]").substring(0, 30), `${uptime}s`];
-      }),
-    )
-  );
+  return {
+    message: `**Terminal** Listed ${connectedTerminals.length} terminals`,
+    result:
+      "Attached Terminals:\n" +
+      markdownTable(
+        ["Name", "Last Input", "Uptime"],
+        connectedTerminals.map(([terminalName, terminalSession]) => {
+          const uptime = Math.floor((Date.now() - terminalSession.startTime) / 1000);
+          return [terminalName, (terminalSession.lastInput ?? "[No Input]").substring(0, 30), `${uptime}s`];
+        }),
+      ),
+  };
 }
 
 const description = "List all active persistent terminal sessions.";

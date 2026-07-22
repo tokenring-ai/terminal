@@ -40,23 +40,34 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
   });
 
   if (result.status === "terminalNotFound") {
-    return "Terminal not found";
+    return {
+      failed: true,
+      message: `**Terminal** Failed to start interactive terminal (terminal not found)`,
+      result: "Terminal not found",
+    };
   } else if (result.status === "terminalNotInteractive") {
-    return "Terminal is not interactive";
+    return {
+      failed: true,
+      message: `**Terminal** Failed to start interactive terminal (terminal not available)`,
+      result: "Terminal is not interactive",
+    };
   }
 
   const runTime = Math.floor(Date.now() - startTime);
 
   terminalService.requireAgentRecord(terminalName, agent).lastPosition = result.position;
 
-  return `
+  return {
+    message: `**Terminal** Started interactive terminal`,
+    result: `
 $ ${command.trim()}
 ---
 ${result.output}
 ---
 [${runTime}ms]
 ${result.complete ? "Terminal was closed" : `Terminal is still running. Use terminal_continue with terminalName: ${terminalName} to continue interacting with the terminal, and stop the terminal with terminal_stop once you are done using it.`}
-`.trim();
+`.trim(),
+  };
 }
 
 const description =

@@ -127,7 +127,7 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
   }
 
   return {
-    summary: `${displayName} (${intelligentTruncate(command, { maxLength: 100 }).trim()})`,
+    message: `**Terminal** Ran ${intelligentTruncate(cmdString, { maxLength: 100 }).trim()}`,
     result: resultText,
   };
 }
