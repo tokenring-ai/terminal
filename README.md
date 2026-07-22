@@ -43,7 +43,7 @@ bun install @tokenring-ai/terminal
 
 ### Development Dependencies
 
-- `vitest` (^4.1.1) - Testing framework
+- `bun test` - Testing framework
 - `typescript` (^6.0.2) - TypeScript compiler
 
 ## Core Components
@@ -594,7 +594,7 @@ const config = {
       'awk', 'sed', 'cat', 'cd', 'chdir', 'diff', 'echo', 'find', 'git', 'grep', 'head', 'help',
       'hostname', 'id', 'ipconfig', 'tee', 'ls', 'netstat', 'ps', 'pwd', 'sort', 'tail',
       'tree', 'type', 'uname', 'uniq', 'wc', 'which', 'touch', 'mkdir', 'npm', 'yarn',
-      'bun', 'tsc', 'npx', 'bunx', 'vitest'
+      'bun', 'tsc', 'npx', 'bunx'
     ],
     dangerousCommands: [
       "(^|\\s)dd\\s",
@@ -1229,7 +1229,6 @@ pkg/terminal/
 ├── test/
 │   ├── createTestTerminal.ts # Test utility
 │   └── TerminalService.commandValidation.test.ts # Command validation tests
-├── vitest.config.ts         # Vitest configuration
 ├── package.json             # Package metadata and dependencies
 └── README.md                # This file
 ```
