@@ -38,7 +38,7 @@ export function projectTerminalList(terminalService: TerminalService, agentId?: 
         running,
         outputLength,
         exitCode,
-        connectedAgentIds: Array.from(item.connectedAgents.keys()),
+        connectedAgentIds: item.connectedAgents.keysArray(),
       }),
     );
   }

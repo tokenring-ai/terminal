@@ -26,7 +26,7 @@ export default {
             terminalName,
             (terminalSession.lastInput ?? "[No Input]").substring(0, 30),
             `${uptime}s`,
-            Array.from(terminalSession.connectedAgents.keys()).join(", "),
+            terminalSession.connectedAgents.keysArray().join(", "),
           ];
         }),
       )

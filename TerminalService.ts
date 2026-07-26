@@ -4,6 +4,7 @@ import type Agent from "@tokenring-ai/agent/Agent";
 import type { AgentCreationContext } from "@tokenring-ai/agent/types";
 import type { TokenRingService } from "@tokenring-ai/app/types";
 import { ConfigurationError } from "@tokenring-ai/app/types";
+import EnhancedMap from "@tokenring-ai/utility/map/enhancedMap";
 import deepClone from "@tokenring-ai/utility/object/deepClone";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
 import { generateHumanId } from "@tokenring-ai/utility/string/generateHumanId";
@@ -30,7 +31,7 @@ type TerminalSessionRecord = {
   providerSessionId: string;
   workingDirectory: string;
   startTime: number;
-  connectedAgents: Map<string, TerminalConnection>;
+  connectedAgents: EnhancedMap<string, TerminalConnection>;
 };
 
 type SpawnTerminalOptions = {
@@ -254,7 +255,7 @@ export default class TerminalService implements TokenRingService {
       providerSessionId,
       workingDirectory,
       startTime: Date.now(),
-      connectedAgents: new Map(),
+      connectedAgents: new EnhancedMap(),
     };
 
     this.terminalSessionRegistry.set(name, terminal);
