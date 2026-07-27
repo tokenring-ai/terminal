@@ -39,6 +39,10 @@ type SpawnTerminalOptions = {
   workingDirectory: string;
   isolation: TerminalIsolationLevel | "auto";
   attachToAgent?: Agent;
+  /** Override the provider's pty/pipe default for this session. */
+  pty?: boolean;
+  cols?: number;
+  rows?: number;
 };
 
 type RetrieveTerminalOutputOptions = {
@@ -228,7 +232,7 @@ export default class TerminalService implements TokenRingService {
     return { deleted };
   }
 
-  async createSession({ providerName, workingDirectory, isolation, attachToAgent }: SpawnTerminalOptions): Promise<string> {
+  async createSession({ providerName, workingDirectory, isolation, attachToAgent, pty, cols, rows }: SpawnTerminalOptions): Promise<string> {
     const provider = this.terminalProviderRegistry.require(providerName);
     if (!provider.isInteractive) {
       throw new ConfigurationError(this.name, `Provider '${providerName}' does not support interactive sessions`);
@@ -247,6 +251,9 @@ export default class TerminalService implements TokenRingService {
     const providerSessionId = await provider.startInteractiveSession({
       workingDirectory,
       isolation,
+      ...(pty !== undefined && { pty }),
+      ...(cols !== undefined && { cols }),
+      ...(rows !== undefined && { rows }),
     });
     const name = generateHumanId();
     const terminal: TerminalSessionRecord = {
@@ -281,6 +288,21 @@ export default class TerminalService implements TokenRingService {
     terminal.lastInput = input;
     await provider.sendInput(terminal.providerSessionId, input);
     this.notifyTerminalListChanged();
+    return "success";
+  }
+
+  async resizeSession(terminalName: string, cols: number, rows: number): Promise<"success" | "terminalNotFound" | "terminalNotInteractive"> {
+    const terminal = this.getTerminalSessionByName(terminalName);
+    if (!terminal) {
+      return "terminalNotFound";
+    }
+    const provider = this.requireProviderByName(terminal.providerName);
+    if (!provider.isInteractive) {
+      return "terminalNotInteractive";
+    }
+
+    // Providers without a resizable window simply have nothing to do here.
+    await provider.resizeSession?.(terminal.providerSessionId, cols, rows);
     return "success";
   }
 

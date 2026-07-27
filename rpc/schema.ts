@@ -82,6 +82,15 @@ export default {
       }),
       result: z.discriminatedUnion("status", [SuccessSchema, TerminalNotFoundSchema, TerminalNotInteractiveSchema]),
     },
+    resizeTerminal: {
+      type: "mutation",
+      input: z.object({
+        terminalName: z.string(),
+        cols: z.number().int().min(1),
+        rows: z.number().int().min(1),
+      }),
+      result: z.discriminatedUnion("status", [SuccessSchema, TerminalNotFoundSchema, TerminalNotInteractiveSchema]),
+    },
     retrieveOutput: {
       type: "query",
       input: z.object({

@@ -81,6 +81,11 @@ export default createRPCEndpoint(TerminalRpcSchema, {
     return { status };
   },
 
+  async resizeTerminal(args, app) {
+    const status = await app.requireService(TerminalService).resizeSession(args.terminalName, args.cols, args.rows);
+    return { status };
+  },
+
   async retrieveOutput(args, app) {
     return await app.requireService(TerminalService).readOutput(args.terminalName, {
       fromPosition: args.fromPosition,
