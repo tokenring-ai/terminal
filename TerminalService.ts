@@ -79,7 +79,7 @@ export default class TerminalService implements TokenRingService {
   readonly name = "TerminalService";
   description = "Terminal and shell command execution service";
 
-  protected dangerousCommands: RegExp[];
+  protected dangerousCommands: RegExp[] = [];
 
   private terminalProviderRegistry = new KeyedRegistry<TerminalProvider>();
 
@@ -93,12 +93,30 @@ export default class TerminalService implements TokenRingService {
   getAllTerminalSessions = this.terminalSessionRegistry.entriesArray;
   private terminalListeners = new Set<() => void>();
 
-  constructor(private options: z.output<typeof TerminalConfigSchema>) {
+  private options: z.output<typeof TerminalConfigSchema> | undefined;
+
+  constructor(options?: z.output<typeof TerminalConfigSchema>) {
+    if (options) this.applyOptions(options);
+  }
+
+  reconfigure(options: z.output<typeof TerminalConfigSchema>): void {
+    this.applyOptions(options);
+  }
+
+  private applyOptions(options: z.output<typeof TerminalConfigSchema>): void {
+    this.options = options;
     this.dangerousCommands = options.dangerousCommands.map(command => new RegExp(command, "is"));
   }
 
+  private requireOptions(): z.output<typeof TerminalConfigSchema> {
+    if (!this.options) {
+      throw new ConfigurationError(this.name, "TerminalService is not configured");
+    }
+    return this.options;
+  }
+
   start(_signal?: AbortSignal): void {
-    this.terminalProviderRegistry.require(this.options.agentDefaults.provider);
+    this.terminalProviderRegistry.require(this.requireOptions().agentDefaults.provider);
   }
 
   async *subscribeTerminalsAsync(signal: AbortSignal, agentId?: string): AsyncGenerator<ParsedTerminalSessionSummary[]> {
@@ -159,7 +177,7 @@ export default class TerminalService implements TokenRingService {
   }
 
   attach(agent: Agent, creationContext: AgentCreationContext): void {
-    const config = deepClone(this.options.agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
+    const config = deepClone(this.requireOptions().agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
     const initialState = agent.initializeState(TerminalState, config);
 
     const providerName = initialState.providerName;
@@ -197,7 +215,7 @@ export default class TerminalService implements TokenRingService {
   }
 
   defaultWorkingDirectory(): string {
-    return this.options.agentDefaults.workingDirectory;
+    return this.requireOptions().agentDefaults.workingDirectory;
   }
 
   getWorkingDirectory(agent: Agent): string {
@@ -495,7 +513,7 @@ export default class TerminalService implements TokenRingService {
     const commands = this.parseCompoundCommand(shellString.toLowerCase());
     for (let command of commands) {
       command = command.trim();
-      if (!this.options.safeCommands.some(pattern => command.startsWith(pattern))) {
+      if (!this.requireOptions().safeCommands.some(pattern => command.startsWith(pattern))) {
         return "unknown";
       }
     }

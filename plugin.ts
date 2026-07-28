@@ -19,18 +19,21 @@ export default {
   displayName: "Terminal Service",
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) {
+  install(app) {
+    app.addServices(new TerminalService());
+    app.waitForService(ChatService, chatService => {
+      chatService.addTools(...tools);
+    });
+    app.waitForService(AgentCommandService, agentCommandService => {
+      agentCommandService.addAgentCommands(commands);
+    });
+    app.waitForService(RpcService, rpcService => {
+      rpcService.registerEndpoint(terminalRPC);
+    });
+  },
+  reconfigure(app, config) {
     if (config.terminal) {
-      app.addServices(new TerminalService(config.terminal));
-      app.waitForService(ChatService, chatService => {
-        chatService.addTools(...tools);
-      });
-      app.waitForService(AgentCommandService, agentCommandService => {
-        agentCommandService.addAgentCommands(commands);
-      });
-      app.waitForService(RpcService, rpcService => {
-        rpcService.registerEndpoint(terminalRPC);
-      });
+      app.requireService(TerminalService).reconfigure(config.terminal);
     }
   },
   configSchema: packageConfigSchema,
