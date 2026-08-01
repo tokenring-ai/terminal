@@ -25,7 +25,7 @@ async function execute({ args, remainder, agent }: AgentCommandInputType<typeof 
     throw new CommandFailedError(`Invalid isolation level: ${isolation}. Valid options are 'none' or 'sandbox'.`);
   }
 
-  const terminalService = agent.requireServiceByType(TerminalService);
+  const terminalService = agent.requireService(TerminalService);
   const workingDirectory = terminalService.getWorkingDirectory(agent);
 
   const terminalName = await terminalService.createSession({

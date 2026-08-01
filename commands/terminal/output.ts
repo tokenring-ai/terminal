@@ -17,8 +17,8 @@ export default {
 
 /terminal output term-1`,
   inputSchema,
-  execute: async ({ positionals: { terminalName }, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    const result = await agent.requireServiceByType(TerminalService).readFullOutput(terminalName);
+  execute: async ({ args: { terminalName }, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
+    const result = await agent.requireService(TerminalService).readFullOutput(terminalName);
     if (result.status === "terminalNotFound") {
       throw new CommandFailedError("Terminal not found");
     }

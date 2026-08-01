@@ -9,7 +9,7 @@ const name = "terminal_start";
 const displayName = "Interactive Terminal/Start";
 
 export async function execute({ command, disableSandbox }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
-  const terminalService = agent.requireServiceByType(TerminalService);
+  const terminalService = agent.requireService(TerminalService);
 
   const confirmed = await agent.askForApproval({
     message: disableSandbox
@@ -83,7 +83,7 @@ const inputSchema = z.object({
 
 function adjustActivation(enabled: boolean, agent: Agent) {
   if (enabled) {
-    const terminal = agent.requireServiceByType(TerminalService);
+    const terminal = agent.requireService(TerminalService);
     const activeTerminalProvider = terminal.requireActiveProvider(agent);
     if (!activeTerminalProvider.isInteractive) {
       return false;

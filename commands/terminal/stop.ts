@@ -15,8 +15,8 @@ export default {
 
 /terminal stop term-1`,
   inputSchema,
-  execute: async ({ positionals: { terminalName }, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
-    const terminalService = agent.requireServiceByType(TerminalService);
+  execute: async ({ args: { terminalName }, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> => {
+    const terminalService = agent.requireService(TerminalService);
 
     const result = await terminalService.disconnectAgentFromSession(terminalName, agent);
 

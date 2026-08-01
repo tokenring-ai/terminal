@@ -8,7 +8,7 @@ const name = "terminal_continue";
 const displayName = "Interactive Terminal/Continue";
 
 export async function execute({ terminalName, stdin }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
-  const terminal = agent.requireServiceByType(TerminalService);
+  const terminal = agent.requireService(TerminalService);
   const { lastPosition } = terminal.requireAgentRecord(terminalName, agent);
 
   const { interactiveConfig } = agent.getState(TerminalState);
@@ -67,7 +67,7 @@ const inputSchema = z.object({
 
 function adjustActivation(enabled: boolean, agent: Agent) {
   if (enabled) {
-    const terminal = agent.requireServiceByType(TerminalService);
+    const terminal = agent.requireService(TerminalService);
     const activeTerminalProvider = terminal.requireActiveProvider(agent);
     if (!activeTerminalProvider.isInteractive) {
       return false;

@@ -8,7 +8,7 @@ const name = "terminal_output";
 const displayName = "Terminal/Output";
 
 export async function execute({ terminalName }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
-  const terminalService = agent.requireServiceByType(TerminalService);
+  const terminalService = agent.requireService(TerminalService);
 
   const completeOutput = await terminalService.readFullOutput(terminalName);
   if (completeOutput.status === "terminalNotInteractive") {

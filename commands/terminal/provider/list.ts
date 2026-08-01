@@ -13,7 +13,7 @@ export default {
 /terminal provider list`,
   inputSchema,
   execute: ({ agent }: AgentCommandInputType<typeof inputSchema>): string => {
-    const providers = agent.requireServiceByType(TerminalService).getAvailableProviders();
+    const providers = agent.requireService(TerminalService).getAvailableProviders();
     if (providers.length === 0) return "No terminal providers are registered.";
     return `Available terminal providers:\n${providers.map(p => `- ${p}`).join("\n")}`;
   },

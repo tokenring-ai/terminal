@@ -57,7 +57,7 @@ describe("TerminalService", () => {
     terminalService = new TerminalService(TerminalConfigSchema.parse(testConfig));
     testProvider = new TestTerminalProvider();
     terminalService.registerTerminalProvider("test", testProvider);
-    app.addServices(terminalService);
+    app.addService(terminalService);
     agent = createTestingAgent(app);
     terminalService.attach(agent, { items: [] });
   });

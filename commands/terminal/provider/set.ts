@@ -7,9 +7,9 @@ const inputSchema = {
   positionals: [{ name: "providerName", description: "Provider name", required: true }],
 } as const satisfies AgentCommandInputSchema;
 
-function execute({ positionals: { providerName }, agent }: AgentCommandInputType<typeof inputSchema>): string {
+function execute({ args: { providerName }, agent }: AgentCommandInputType<typeof inputSchema>): string {
   try {
-    agent.requireServiceByType(TerminalService).setActiveProvider(providerName, agent);
+    agent.requireService(TerminalService).setActiveProvider(providerName, agent);
     return `Active provider set to: ${providerName}`;
   } catch {
     throw new CommandFailedError(`Provider "${providerName}" not found.`);

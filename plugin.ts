@@ -20,9 +20,9 @@ export default {
   version: packageJSON.version,
   description: packageJSON.description,
   install(app) {
-    app.addServices(new TerminalService());
+    app.addService(new TerminalService());
     app.waitForService(ChatService, chatService => {
-      chatService.addTools(...tools);
+      chatService.addTools(tools);
     });
     app.waitForService(AgentCommandService, agentCommandService => {
       agentCommandService.addAgentCommands(commands);

@@ -8,7 +8,7 @@ const name = "terminal_list";
 const displayName = "Interactive Terminal/List";
 
 export function execute(_: z.output<typeof inputSchema>, agent: Agent): TokenRingToolResult {
-  const terminalService = agent.requireServiceByType(TerminalService);
+  const terminalService = agent.requireService(TerminalService);
 
   const connectedTerminals = terminalService.getAllTerminalSessions().filter(([, terminalSession]) => terminalSession.connectedAgents.has(agent.id));
 
@@ -39,7 +39,7 @@ const inputSchema = z.object({});
 
 function adjustActivation(enabled: boolean, agent: Agent) {
   if (enabled) {
-    const terminal = agent.requireServiceByType(TerminalService);
+    const terminal = agent.requireService(TerminalService);
     const activeTerminalProvider = terminal.requireActiveProvider(agent);
     if (!activeTerminalProvider.isInteractive) {
       return false;

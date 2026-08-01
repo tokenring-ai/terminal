@@ -6,7 +6,7 @@ import TerminalService from "../../../TerminalService.ts";
 const inputSchema = {} as const satisfies AgentCommandInputSchema;
 
 async function execute({ agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const terminal = agent.requireServiceByType(TerminalService);
+  const terminal = agent.requireService(TerminalService);
   const available = terminal.getAvailableProviders();
   if (available.length === 0) return "No terminal providers are registered.";
   if (available.length === 1 && available[0]) {

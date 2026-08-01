@@ -11,7 +11,7 @@ const name = "shell_bash";
 const displayName = "Shell/Bash";
 
 export async function execute({ command, disableSandbox }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
-  const terminal = agent.requireServiceByType(TerminalService);
+  const terminal = agent.requireService(TerminalService);
   const bashOptions = agent.getState(TerminalState).bash;
 
   if (!command) {

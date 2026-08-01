@@ -7,8 +7,8 @@ const inputSchema = {
   remainder: { name: "input", description: "Input to send", required: true },
 } as const satisfies AgentCommandInputSchema;
 
-async function execute({ positionals: { terminalName }, remainder, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const terminalService = agent.requireServiceByType(TerminalService);
+async function execute({ args: { terminalName }, remainder, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const terminalService = agent.requireService(TerminalService);
 
   await terminalService.sendInput(terminalName, remainder);
   return "Input sent to terminal";

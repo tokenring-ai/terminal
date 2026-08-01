@@ -7,7 +7,7 @@ const name = "terminal_stop";
 const displayName = "Interactive Terminal/Stop";
 
 export async function execute({ terminalName }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
-  const terminalService = agent.requireServiceByType(TerminalService);
+  const terminalService = agent.requireService(TerminalService);
 
   const result = await terminalService.disconnectAgentFromSession(terminalName, agent);
 
@@ -25,7 +25,7 @@ const inputSchema = z.object({
 
 function adjustActivation(enabled: boolean, agent: Agent) {
   if (enabled) {
-    const terminal = agent.requireServiceByType(TerminalService);
+    const terminal = agent.requireService(TerminalService);
     const activeTerminalProvider = terminal.requireActiveProvider(agent);
     if (!activeTerminalProvider.isInteractive) {
       return false;

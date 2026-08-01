@@ -14,7 +14,7 @@ export default {
 /terminal list`,
   inputSchema,
   execute: ({ agent }: AgentCommandInputType<typeof inputSchema>): string => {
-    const terminalService = agent.requireServiceByType(TerminalService);
+    const terminalService = agent.requireService(TerminalService);
 
     return (
       "Attached Terminals:\n" +

@@ -34,7 +34,7 @@ describe("streamTerminals", () => {
     app = createTestingApp();
     const terminalService = new TerminalService(TerminalConfigSchema.parse(testConfig));
     terminalService.registerTerminalProvider("test", new TestTerminalProvider());
-    app.addServices(terminalService);
+    app.addService(terminalService);
     agent = createTestingAgent(app);
     terminalService.attach(agent, { items: [] });
     rpc = createLocalRPCClient(terminalRPC, app);
