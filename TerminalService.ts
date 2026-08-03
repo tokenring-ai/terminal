@@ -13,10 +13,15 @@ import { deepEquals } from "bun";
 import type { z } from "zod";
 import { projectTerminalList } from "./projectTerminalList.ts";
 import type { TerminalNotFound, TerminalNotInteractive } from "./rpc/schema.ts";
-import type { ParsedTerminalSessionSummary } from "./schema.ts";
+import type { CommandSafetyAssessment, ParsedTerminalSessionSummary, TerminalCommandSafety } from "./schema.ts";
 import { TerminalAgentConfigSchema, type TerminalConfigSchema } from "./schema.ts";
 import { TerminalState } from "./state/terminalState.ts";
 import type { ExecuteCommandOptions, ExecuteCommandResult, InteractiveTerminalOutput, TerminalIsolationLevel, TerminalProvider } from "./TerminalProvider.ts";
+
+/** Patterns that are plain command names (no regex metacharacters). */
+function isSimpleCommandNamePattern(pattern: string): boolean {
+  return /^[A-Za-z_][\w.-]*$/.test(pattern);
+}
 
 type SuccessResult = { status: "success" };
 
@@ -79,7 +84,7 @@ export default class TerminalService implements TokenRingService {
   readonly name = "TerminalService";
   description = "Terminal and shell command execution service";
 
-  protected dangerousCommands: RegExp[] = [];
+  private commandSafetyRules: Array<TerminalCommandSafety & { regex: RegExp }> = [];
 
   private terminalProviderRegistry = new KeyedRegistry<TerminalProvider>();
 
@@ -105,7 +110,10 @@ export default class TerminalService implements TokenRingService {
 
   private applyOptions(options: z.output<typeof TerminalConfigSchema>): void {
     this.options = options;
-    this.dangerousCommands = options.dangerousCommands.map(command => new RegExp(command, "is"));
+    this.commandSafetyRules = options.commandSafety.map(rule => ({
+      ...rule,
+      regex: new RegExp(rule.match, "is"),
+    }));
   }
 
   private requireOptions(): z.output<typeof TerminalConfigSchema> {
@@ -503,27 +511,106 @@ export default class TerminalService implements TokenRingService {
     return this.requireActiveProvider(agent).runScript(script, this.buildExecutionOptions(options, agent));
   }
 
-  getCommandSafetyLevel(shellString: string): "safe" | "unknown" | "dangerous" {
-    for (const dangerousCommand of this.dangerousCommands) {
-      if (dangerousCommand.test(shellString)) {
-        return "dangerous";
+  /**
+   * Assess command safety. The level is the highest numeric level matched by any
+   * piece of the command (compound segments and backtick subcommands). Pieces that
+   * match no rule use `unknownCommandSafetyLevel`.
+   *
+   * Simple name rules (e.g. `type`, `find`) match only the extracted command name,
+   * so flags like `-type` are not treated as the `type` command. Regex rules still
+   * match the full segment (e.g. `rm.*-.*r`, `git.*(push|reset)`).
+   */
+  getCommandSafety(shellString: string): CommandSafetyAssessment {
+    const options = this.requireOptions();
+    const unknownLevel = options.unknownCommandSafetyLevel;
+    const pieces = this.collectCommandPieces(shellString);
+    if (pieces.length === 0) {
+      return {
+        level: unknownLevel,
+        matches: [
+          {
+            match: "",
+            level: unknownLevel,
+            description: "Empty or unparseable command",
+          },
+        ],
+      };
+    }
+
+    let level = 0;
+    const matches: TerminalCommandSafety[] = [];
+    const seen = new Set<string>();
+
+    for (const piece of pieces) {
+      const commandName = this.extractCommandName(piece);
+      const pieceMatches = this.commandSafetyRules.filter(rule => this.ruleMatchesPiece(rule, piece, commandName));
+      if (pieceMatches.length === 0) {
+        level = Math.max(level, unknownLevel);
+        const key = `unknown:${unknownLevel}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          matches.push({
+            match: piece,
+            level: unknownLevel,
+            description: `Unrecognized command piece: ${piece}`,
+          });
+        }
+        continue;
+      }
+
+      for (const rule of pieceMatches) {
+        level = Math.max(level, rule.level);
+        const key = `${rule.match}:${rule.level}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          matches.push({
+            match: rule.match,
+            level: rule.level,
+            description: rule.description,
+          });
+        }
       }
     }
 
-    const commands = this.parseCompoundCommand(shellString.toLowerCase());
-    for (let command of commands) {
-      command = command.trim();
-      if (!this.requireOptions().safeCommands.some(pattern => command.startsWith(pattern))) {
-        return "unknown";
-      }
+    matches.sort((a, b) => b.level - a.level);
+    return { level, matches };
+  }
+
+  /**
+   * Simple command-name patterns (no regex metacharacters) match the executable
+   * name only. Patterns with regex syntax match the full segment.
+   */
+  private ruleMatchesPiece(rule: TerminalCommandSafety & { regex: RegExp }, piece: string, commandName: string | null): boolean {
+    if (isSimpleCommandNamePattern(rule.match)) {
+      if (!commandName) return false;
+      // Exact name match (case-insensitive); basename for paths like /usr/bin/git
+      const baseName = commandName.includes("/") ? (commandName.split("/").pop() ?? commandName) : commandName;
+      return baseName.toLowerCase() === rule.match.toLowerCase();
     }
-    return "safe";
+    return rule.regex.test(piece);
+  }
+
+  /** Convenience: highest safety level for the command (1–10). */
+  getCommandSafetyLevel(shellString: string): number {
+    return this.getCommandSafety(shellString).level;
   }
 
   parseCompoundCommand(command: string): string[] {
     const parsedCommands: string[] = [];
     this.collectCommandNames(command, parsedCommands);
     return parsedCommands;
+  }
+
+  /** Full command segments (and nested backtick subcommands) used for safety matching. */
+  private collectCommandPieces(command: string): string[] {
+    const pieces: string[] = [];
+    for (const segment of this.splitCommandSegments(command)) {
+      pieces.push(segment);
+      for (const subcommand of this.extractBacktickSubcommands(segment)) {
+        pieces.push(...this.collectCommandPieces(subcommand));
+      }
+    }
+    return pieces;
   }
 
   private notifyTerminalListChanged() {

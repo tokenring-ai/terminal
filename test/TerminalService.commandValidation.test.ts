@@ -3,8 +3,8 @@ import type TerminalService from "../TerminalService.ts";
 import createTestTerminal from "./createTestTerminal.test";
 
 /**
- * Test suite for TerminalService command validation functionality
- * Tests the security features that prevent dangerous commands from being executed
+ * Test suite for TerminalService command safety levels.
+ * Level is the highest numeric match across command pieces (1–10).
  */
 describe("TerminalService Command Validation", () => {
   let terminalService: TerminalService;
@@ -14,33 +14,33 @@ describe("TerminalService Command Validation", () => {
   });
 
   describe("Basic Command Validation", () => {
-    it("should validate individual commands correctly", () => {
-      expect(terminalService.getCommandSafetyLevel("cd")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("ls")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("git")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("npm")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("yarn")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("bun")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("tsc")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("echo")).toBe("safe");
+    it("should assign low levels to common safe commands", () => {
+      expect(terminalService.getCommandSafetyLevel("cd")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("ls")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("git")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("npm")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("yarn")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("bun")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("tsc")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("echo")).toBe(3);
     });
 
-    it("should reject dangerous commands", () => {
-      expect(terminalService.getCommandSafetyLevel("rm")).toBe("unknown");
-      expect(terminalService.getCommandSafetyLevel("node")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("sudo ")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("rm -rf")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("format ")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("del ")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("shutdown")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("reboot")).toBe("dangerous");
+    it("should assign high levels to dangerous commands", () => {
+      expect(terminalService.getCommandSafetyLevel("rm")).toBe(6); // unknown (no -r rule)
+      expect(terminalService.getCommandSafetyLevel("node")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("sudo ls")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("rm -rf")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("format c:")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("del /s /q *.*")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("shutdown")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("reboot")).toBe(10);
     });
 
     it("should handle command variations", () => {
-      expect(terminalService.getCommandSafetyLevel("rm -rf /")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("rmdir ")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("sudo ls")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("npm install")).toBe("safe"); // npm is allowed
+      expect(terminalService.getCommandSafetyLevel("rm -rf /")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("rmdir foo")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("sudo ls")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("npm install")).toBe(3);
     });
   });
 
@@ -109,85 +109,73 @@ describe("TerminalService Command Validation", () => {
   });
 
   describe("Compound Command Security Validation", () => {
-    it("should validate compound command where all commands are allowed", () => {
-      expect(terminalService.getCommandSafetyLevel("cd frontend/chat && bun add lucide-react")).toBe("safe");
-    });
-    it("should detect dangerous commands in compound statements", () => {
-      expect(terminalService.getCommandSafetyLevel("cd src && rm -rf node_modules")).toBe("dangerous");
-    });
-
-    it("should detect multiple dangerous commands", () => {
-      expect(terminalService.getCommandSafetyLevel("rm file1 && sudo rm file2")).toBe("dangerous");
+    it("should use the highest level across compound pieces", () => {
+      expect(terminalService.getCommandSafetyLevel("cd frontend/chat && bun add lucide-react")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("cd src && rm -rf node_modules")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("rm file1 && sudo rm file2")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel('npm install; yarn build && tsc && echo "done"')).toBe(3);
     });
 
-    it("should validate complex compound commands", () => {
-      expect(terminalService.getCommandSafetyLevel('npm install; yarn build && tsc && echo "done"')).toBe("safe");
-    });
-
-    it("should validate quoted grep pipelines as safe", () => {
+    it("should elevate when an unknown piece is present", () => {
+      // head is not in the test rule set → unknown level 6
       expect(
         terminalService.getCommandSafetyLevel(
           'grep -r "rpc\\|RPC\\|command\\|Command\\|slash" pkg/docker/ --include="*.ts" | grep -v "node_modules" | head -20',
         ),
-      ).toBe("safe");
+      ).toBe(6);
     });
   });
 
   describe("Edge Cases and Boundary Conditions", () => {
     it("should handle single character commands", () => {
-      expect(terminalService.getCommandSafetyLevel("a")).toBe("unknown");
+      expect(terminalService.getCommandSafetyLevel("a")).toBe(6);
     });
 
     it("should handle very long command names", () => {
       const longCommand = "a".repeat(1000) + "rm";
-      expect(terminalService.getCommandSafetyLevel(longCommand)).toBe("unknown");
+      expect(terminalService.getCommandSafetyLevel(longCommand)).toBe(6);
     });
 
     it("should handle case sensitivity correctly", () => {
-      expect(terminalService.getCommandSafetyLevel("RM -r")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("NPM")).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel("RM -r")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("NPM")).toBe(3);
     });
   });
 
   describe("Real-world Security Scenarios", () => {
-    it("should prevent common attack patterns", () => {
-      expect(terminalService.getCommandSafetyLevel("rm -rf /blah")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("sudo rm -rf /blah")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("format c:")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("del /s /q *.*")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("shutdown -h now")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("reboot")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("dd if=/dev/zero of=/dev/sda")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel('find / -name "*.txt" -exec rm {} \\;')).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("chmod -R 777 /blah")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("chown -R root:root /blah")).toBe("dangerous");
+    it("should flag common attack patterns at elevated levels", () => {
+      expect(terminalService.getCommandSafetyLevel("rm -rf /blah")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("sudo rm -rf /blah")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("format c:")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("del /s /q *.*")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("shutdown -h now")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("reboot")).toBe(10);
+      expect(terminalService.getCommandSafetyLevel("dd if=/dev/zero of=/dev/sda")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel('find / -name "*.txt" -exec rm {} \\;')).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("chmod -R 777 /blah")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("chown -R root:root /blah")).toBe(8);
     });
 
     it("should allow legitimate development commands", () => {
-      expect(
-        terminalService.getCommandSafetyLevel(
-          "cd app/coder/electron && mkdir -p resources hooks && touch resources/entitlements.plist resources/LICENSE resources/background.png",
-        ),
-      ).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel('grep -n "attach\\|clearCurrentPost\\|show()\\|reset(" pkg/wordpress/README.md')).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("npm install")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("yarn add package-name")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("bun add package-name")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("git status")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("git add .")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel('git commit -m "message"')).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("cd src/app")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("tsc")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel('echo "Hello World"')).toBe("safe");
+      expect(terminalService.getCommandSafetyLevel('grep -n "attach\\|clearCurrentPost\\|show()\\|reset(" pkg/wordpress/README.md')).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("npm install")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("yarn add package-name")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("bun add package-name")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("git status")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("git add .")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel('git commit -m "message"')).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("cd src/app")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("tsc")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel('echo "Hello World"')).toBe(3);
     });
 
-    it("should treat node/python/shell interpreters as dangerous", () => {
-      expect(terminalService.getCommandSafetyLevel("node dist/index.js")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("python script.py")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("perl -e 'print 1'")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("bash -c 'echo hi'")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("curl https://example.com")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("wget https://example.com")).toBe("dangerous");
+    it("should treat node/python/shell interpreters as elevated", () => {
+      expect(terminalService.getCommandSafetyLevel("node dist/index.js")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("python script.py")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("perl -e 'print 1'")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("bash -c 'echo hi'")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("curl https://example.com")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("wget https://example.com")).toBe(8);
     });
   });
 
@@ -208,7 +196,7 @@ describe("TerminalService Command Validation", () => {
     });
 
     it("should not have memory leaks for large inputs", () => {
-      const largeCommand = "cmd1 && cmd2 && cmd3 && cmd4 && cmd5"; // 20+ commands
+      const largeCommand = "cmd1 && cmd2 && cmd3 && cmd4 && cmd5";
       const commands = terminalService.parseCompoundCommand(largeCommand);
 
       expect(commands.length).toBe(5);

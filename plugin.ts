@@ -4,6 +4,7 @@ import { ChatService } from "@tokenring-ai/chat";
 import { z } from "zod";
 import { RpcService } from "../rpc/index.ts";
 import commands from "./commands.ts";
+import config from "./config/index.ts";
 import packageJSON from "./package.json" with { type: "json" };
 import terminalRPC from "./rpc/terminal.ts";
 import { TerminalConfigSchema } from "./schema.ts";
@@ -19,6 +20,7 @@ export default {
   displayName: "Terminal Service",
   version: packageJSON.version,
   description: packageJSON.description,
+  config,
   install(app) {
     app.addService(new TerminalService());
     app.waitForService(ChatService, chatService => {

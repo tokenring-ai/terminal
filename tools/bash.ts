@@ -1,7 +1,9 @@
 import type Agent from "@tokenring-ai/agent/Agent";
+import ChatService from "@tokenring-ai/chat/ChatService";
 import type { TokenRingToolDefinition, TokenRingToolResult } from "@tokenring-ai/chat/schema";
 import { ToolCallError } from "@tokenring-ai/chat/util/tokenRingTool";
 import { joinArrayable } from "@tokenring-ai/utility/array/arrayable";
+import codeBlock from "@tokenring-ai/utility/string/codeBlock";
 import intelligentTruncate from "@tokenring-ai/utility/string/intelligentTruncate";
 import { z } from "zod";
 import { TerminalState } from "../state/terminalState.ts";
@@ -10,8 +12,12 @@ import TerminalService from "../TerminalService.ts";
 const name = "shell_bash";
 const displayName = "Shell/Bash";
 
+/** Running outside the sandbox is at least this dangerous. */
+const DISABLE_SANDBOX_MIN_LEVEL = 8;
+
 export async function execute({ command, disableSandbox }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
   const terminal = agent.requireService(TerminalService);
+  const chatService = agent.requireService(ChatService);
   const bashOptions = agent.getState(TerminalState).bash;
 
   if (!command) {
@@ -25,57 +31,30 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
 
   agent.infoMessage(`Running ${cmdString}`);
 
-  if (disableSandbox) {
-    const confirmed = await agent.askForApproval({
-      message: `Execute potentially dangerous command outside of the sandbox: ${cmdString}?`,
-      default: true,
-      timeout: 10,
-    });
+  const safety = terminal.getCommandSafety(cmdString);
+  const safetyLevel = disableSandbox ? Math.max(safety.level, DISABLE_SANDBOX_MIN_LEVEL) : safety.level;
+  const matchSummary =
+    safety.matches.length > 0 ? safety.matches.map(m => `- [${m.level}] ${m.match || "(unknown)"}: ${m.description}`).join("\n") : "- (no matching rules)";
 
-    if (!confirmed) throw new ToolCallError(name, "User did not approve command execution");
-  } else {
-    const commandSafetyLevel = terminal.getCommandSafetyLevel(cmdString);
-    if (commandSafetyLevel !== "safe") {
-      const dangerous = commandSafetyLevel === "dangerous";
-      const result = await agent.askQuestion({
-        message: `Execute ${dangerous ? "potentially dangerous" : "potentially unknown"} command: ${cmdString}?`,
-        question: {
-          type: "treeSelect",
-          label: "Command Safety Approval",
-          minimumSelections: 1,
-          maximumSelections: 1,
-          defaultValue: [dangerous ? "Not Approved" : "In Sandbox"],
-          tree: [
-            {
-              name: "Yes (In Sandbox)",
-              value: "In Sandbox",
-            },
-            {
-              name: "Yes (Outside Sandbox)",
-              value: "Outside Sandbox",
-            },
-            {
-              name: "No",
-              value: "Not approved",
-            },
-          ],
-        },
-        autoSubmitAfter: dangerous ? undefined : bashOptions.autoApproveUnknownCommandsAfter,
-      });
+  const confirmed = await chatService.checkToolApproval(
+    {
+      toolName: name,
+      message: disableSandbox ? `Execute command outside of the sandbox?\n${codeBlock(cmdString, "bash")}` : `Execute command?\n${codeBlock(cmdString)}`,
+      detailedDescription: [
+        `Shell command${disableSandbox ? " (sandbox disabled)" : " (sandboxed)"}:`,
+        codeBlock(cmdString, "bash"),
+        "",
+        "Safety matches:",
+        matchSummary,
+      ].join("\n"),
+      safetyLevel,
+      default: safetyLevel <= 5,
+    },
+    agent,
+  );
 
-      if (result === null || result.length === 0) {
-        // Approval was cancelled
-        agent.abortCurrentOperation("Command execution approval was cancelled by user");
-        throw new ToolCallError(name, "User cancelled the operation");
-      } else if (result[0] === "Not approved") {
-        throw new ToolCallError(name, "User did not approve command execution");
-      } else if (result[0] === "Outside Sandbox") {
-        disableSandbox = true;
-      } else if (result[0] !== "In Sandbox") {
-        agent.abortCurrentOperation(`Invalid approval response received: ${result[0]}`);
-        throw new ToolCallError(name, "Invalid approval response received");
-      }
-    }
+  if (!confirmed) {
+    throw new ToolCallError(name, "User did not approve command execution");
   }
 
   const activeTerminalProvider = terminal.requireActiveProvider(agent);
@@ -126,8 +105,18 @@ export async function execute({ command, disableSandbox }: z.output<typeof input
     }
   }
 
+  const actions =
+    safety.matches.length > 0
+      ? safety.matches.map(m => `Safety [${m.level}/10] ${m.match || "(unknown)"}: ${m.description}`)
+      : [`Safety [${safetyLevel}/10] (no matching rules)`];
+
+  if (disableSandbox && safety.level < DISABLE_SANDBOX_MIN_LEVEL) {
+    actions.push(`Safety elevated to ${safetyLevel}/10 because sandbox was disabled`);
+  }
+
   return {
     message: `**Terminal** Ran ${intelligentTruncate(cmdString, { maxLength: 100 }).trim()}`,
+    actions,
     result: resultText,
   };
 }

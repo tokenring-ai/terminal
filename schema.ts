@@ -1,6 +1,28 @@
 import type { ConfigFieldMeta } from "@tokenring-ai/app/config/metadata";
 import z from "zod";
 
+export const TerminalCommandSafetySchema = z.object({
+  match: z.string().meta({ description: "Regex pattern to match against a command segment" } satisfies ConfigFieldMeta),
+  level: z
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .meta({ description: "Safety level for matching commands (1 safest – 10 most dangerous)" } satisfies ConfigFieldMeta),
+  description: z.string().meta({ description: "Human readable description of the risk" } satisfies ConfigFieldMeta),
+});
+export type TerminalCommandSafety = z.infer<typeof TerminalCommandSafetySchema>;
+
+/** Default level when no commandSafety rule matches a segment. */
+export const DEFAULT_UNKNOWN_COMMAND_SAFETY_LEVEL = 6;
+
+export type CommandSafetyAssessment = {
+  /** Highest safety level across all command pieces (1–10). */
+  level: number;
+  /** Rules that contributed to the assessment (highest matches first). */
+  matches: TerminalCommandSafety[];
+};
+
 export const TerminalAgentConfigSchema = z
   .object({
     provider: z.string().exactOptional(),
@@ -25,14 +47,10 @@ export const TerminalAgentConfigSchema = z
   .default({});
 
 /*
-  The safe & dangerous commands are not perfect.
-  This is the first layer of defense, with sandboxing, containers, and general user permissions being the next layer of defense.
-  The dangerous commands are designed to trigger a stop on an agent that is trying to work it's way out of the sandbox.
-  This triggers user intervention, and the user can then decide to either allow the command or to keep the agent stopped.
-  Generally, when agents get frustrated, they will try to use common utilities like python, perl, and bash to do things they shouldn't.
-  We also flag wget and curl, as these utilities are commonly used for RCE or to exfiltrate data.
-  We also flag git push and reset, as we don't want the git tree mangled.
-  We also flag file delete operations, and find -delete.
+  Command safety rules are the first layer of defense, with sandboxing, containers,
+  and general user permissions being the next. Each rule assigns a numeric level (1–10).
+  The safety level of a command is the highest level matched by any piece of the command.
+  Unmatched pieces use unknownCommandSafetyLevel (default 6).
  */
 
 export const TerminalConfigSchema = z
@@ -51,13 +69,6 @@ export const TerminalConfigSchema = z
               .number()
               .default(60)
               .meta({ unit: "s", description: "Kill foreground commands running longer than this" } satisfies ConfigFieldMeta),
-            autoApproveUnknownCommandsAfter: z
-              .number()
-              .default(30) //TODO: We should revisit this setting once we have more data
-              .meta({
-                unit: "s",
-                description: "Auto-approve commands that are neither safe nor dangerous after this delay (0 waits forever)",
-              } satisfies ConfigFieldMeta),
           })
           .prefault({})
           .meta({ label: "Bash Commands", advanced: true, description: "One-shot command execution behavior" } satisfies ConfigFieldMeta),
@@ -84,76 +95,19 @@ export const TerminalConfigSchema = z
           .meta({ label: "Interactive Sessions", advanced: true, description: "Long-running interactive terminal behavior" } satisfies ConfigFieldMeta),
       })
       .meta({ label: "Agent Defaults", description: "Terminal behavior applied to newly created agents" } satisfies ConfigFieldMeta),
-    safeCommands: z
-      .array(z.string())
-      .default([
-        "awk",
-        "sed",
-        "cat",
-        "cd",
-        "chdir",
-        "diff",
-        "echo",
-        "file",
-        "find",
-        "git",
-        "grep",
-        "head",
-        "help",
-        "hostname",
-        "id",
-        "ipconfig",
-        "tee",
-        "ls",
-        "netstat",
-        "ps",
-        "pwd",
-        "sort",
-        "tail",
-        "tree",
-        "type",
-        "uname",
-        "uniq",
-        "wc",
-        "which",
-        "touch",
-        "mkdir",
-        "npm",
-        "yarn",
-        "bun",
-        "tsc",
-        "npx",
-        "bunx",
-        "vitest",
-      ])
-      .meta({ description: "Commands agents may run without user approval" } satisfies ConfigFieldMeta),
-    dangerousCommands: z
-      .array(z.string())
-      .default([
-        "(^|\\s)dd\\s",
-        "(^|\\s)dd\\s",
-        "(^|\\s)rm.*-.*r",
-        "(^|\\s)chmod.*-.*r",
-        "(^|\\s)chown.*-.*r",
-        "(^|\\s)rmdir\\s",
-        "(^|\\s)rmdir\\s",
-        "find.*-(delete|exec)", // for find --delete, find --exec rm
-        "(^|\\s)sudo\\s",
-        "(^|\\s)del\\s",
-        "(^|\\s)format\\s",
-        "(^|\\s)reboot",
-        "(^|\\s)shutdown",
-        "(^|\\s)python",
-        "(^|\\s)perl",
-        "(^|\\s)node",
-        "(^|\\s)bash",
-        "(^|\\s)sh\\s",
-        "(^|\\s)curl",
-        "(^|\\s)wget",
-        "git.*(push|reset)",
-      ])
+    commandSafety: z
+      .array(TerminalCommandSafetySchema)
+      .default([])
+      .meta({ description: "Regex safety rules; highest matching level wins per command piece" } satisfies ConfigFieldMeta),
+    unknownCommandSafetyLevel: z
+      .number()
+      .int()
+      .min(1)
+      .max(10)
+      .default(DEFAULT_UNKNOWN_COMMAND_SAFETY_LEVEL)
       .meta({
-        description: "Regex patterns for commands that always stop the agent for user approval (first line of sandbox defense)",
+        advanced: true,
+        description: "Safety level used when a command piece matches no commandSafety rule",
       } satisfies ConfigFieldMeta),
   })
   .strict()

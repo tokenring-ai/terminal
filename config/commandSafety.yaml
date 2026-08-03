@@ -1,0 +1,266 @@
+terminal:
+  commandSafety:
+    - match: "true"
+      level: 1
+      description: "Boolean true value often used in conditional statements."
+    - match: "false"
+      level: 1
+      description: "Boolean false value often used in conditional statements."
+    - match: "test"
+      level: 1
+      description: "Boolean test command used for conditional evaluation."
+    - match: "awk"
+      level: 3
+      description: "Text processing tool used for filtering and manipulating structured data safely."
+    - match: "sed"
+      level: 3
+      description: "Stream editor commonly used for text filtering and transformation."
+    - match: "cat"
+      level: 3
+      description: "Read-only command to concatenate and display file content."
+    - match: "cd"
+      level: 3
+      description: "Safe navigation command to change current working directory."
+    - match: "chdir"
+      level: 3
+      description: "Safe navigation command to change current directory."
+    - match: "diff"
+      level: 3
+      description: "Read-only tool used to compare files and directories line by line."
+    - match: "echo"
+      level: 3
+      description: "Command used to print text or variable contents safely."
+    - match: "file"
+      level: 3
+      description: "Read-only utility to determine file types."
+    - match: "find"
+      level: 3
+      description: "Utility to search for files in a directory hierarchy."
+    - match: "git"
+      level: 3
+      description: "Version control tool used for tracking repository state and changes."
+    - match: "grep"
+      level: 3
+      description: "Read-only search utility to match regular expressions in text."
+    - match: "head"
+      level: 3
+      description: "Read-only command to view the first few lines of a file."
+    - match: "help"
+      level: 3
+      description: "Safe command to display information about built-in commands."
+    - match: "hostname"
+      level: 3
+      description: "Read-only utility to display the system's network name."
+    - match: "id"
+      level: 3
+      description: "Read-only command displaying user identity and group details."
+    - match: "ipconfig"
+      level: 3
+      description: "Read-only command to inspect network interface configuration."
+    - match: "tee"
+      level: 3
+      description: "Output redirection tool used to read from standard input and write to standard output/files."
+    - match: "ls"
+      level: 3
+      description: "Read-only command to list directory contents."
+    - match: "netstat"
+      level: 3
+      description: "Read-only network utility to display active connections and statistics."
+    - match: "ps"
+      level: 3
+      description: "Read-only process management command displaying active processes."
+    - match: "pwd"
+      level: 3
+      description: "Read-only command to print the working directory path."
+    - match: "sort"
+      level: 3
+      description: "Text processing command to sort lines of text files."
+    - match: "tail"
+      level: 3
+      description: "Read-only command to view the last few lines of a file."
+    - match: "tree"
+      level: 3
+      description: "Read-only command displaying directory structure as a tree diagram."
+    - match: "type"
+      level: 3
+      description: "Read-only command displaying information about command type/location."
+    - match: "uname"
+      level: 3
+      description: "Read-only system information command."
+    - match: "uniq"
+      level: 3
+      description: "Text processing utility to filter duplicate lines."
+    - match: "wc"
+      level: 3
+      description: "Read-only text analysis command to count lines, words, and characters."
+    - match: "which"
+      level: 3
+      description: "Read-only command to locate executables in system PATH."
+    - match: "touch"
+      level: 3
+      description: "Command used to create empty files or update file timestamps."
+    - match: "mkdir"
+      level: 3
+      description: "Command to create new directories."
+    - match: "npm"
+      level: 3
+      description: "Standard Node.js package manager used for project management and running scripts."
+    - match: "yarn"
+      level: 3
+      description: "Package manager used for project dependency management and running scripts."
+    - match: "bun"
+      level: 3
+      description: "All-in-one JavaScript runtime and package manager used for running scripts and managing dependencies."
+    - match: "tsc"
+      level: 3
+      description: "TypeScript compiler used to check types and transpile code."
+    - match: "npx"
+      level: 3
+      description: "Executable runner for npm packages."
+    - match: "bunx"
+      level: 3
+      description: "Executable runner for bun packages."
+    - match: "vitest"
+      level: 3
+      description: "Unit test runner framework."
+    - match: "less"
+      level: 3
+      description: "Read-only pager for viewing file content page by page."
+    - match: "more"
+      level: 3
+      description: "Read-only pager for viewing file content."
+    - match: "env"
+      level: 3
+      description: "Read-only command to display environment variables."
+    - match: "date"
+      level: 3
+      description: "Read-only command to display the current date and time."
+    - match: "whoami"
+      level: 3
+      description: "Read-only command to display the current user."
+    - match: "df"
+      level: 3
+      description: "Read-only command to display disk space usage."
+    - match: "du"
+      level: 3
+      description: "Read-only command to display file/directory size usage."
+    - match: "stat"
+      level: 3
+      description: "Read-only command to display file or filesystem status."
+    - match: "basename"
+      level: 3
+      description: "Safe utility to strip directory and suffix from filenames."
+    - match: "dirname"
+      level: 3
+      description: "Safe utility to strip the filename from a path."
+    - match: "cut"
+      level: 3
+      description: "Text processing tool to extract sections from lines of text."
+    - match: "jq"
+      level: 3
+      description: "Read-only JSON processor for querying and formatting JSON data."
+    - match: "pnpm"
+      level: 3
+      description: "Package manager used for project dependency management and running scripts."
+    - match: "man"
+      level: 3
+      description: "Read-only command to display manual pages for other commands."
+    - match: "xmllint"
+      level: 3
+      description: "Read-only command for validating and transforming XML documents."
+    - match: "(^|\\\\s)mv\\\\s"
+      level: 8
+      description: "File move/rename can silently overwrite existing files or relocate critical data."
+    - match: "(^|\\\\s)cp.*-.*r"
+      level: 8
+      description: "Recursive copy can overwrite large sets of files unintentionally."
+    - match: "(^|\\\\s)dd\\\\s"
+      level: 8
+      description: "The dd command can overwrite disk partitions and cause extreme data loss if used incorrectly."
+    - match: "(^|\\\\s)rm.*-.*r"
+      level: 8
+      description: "Recursive file deletion can permanently remove large directory trees and crucial system files."
+    - match: "(^|\\\\s)chmod.*-.*r"
+      level: 8
+      description: "Recursive permission changes can compromise security or render files and directories inaccessible."
+    - match: "(^|\\\\s)chown.*-.*r"
+      level: 8
+      description: "Recursive ownership changes can disrupt system operations and security access control."
+    - match: "(^|\\\\s)rmdir\\\\s"
+      level: 8
+      description: "Directory removal command that can delete directory structures."
+    - match: "find.*-(delete|exec)"
+      level: 8
+      description: "Automated deletion or command execution via find can cause unintended wide-scale file modification or removal."
+    - match: "(^|\\\\s)sudo\\\\s"
+      level: 10
+      description: "Administrative elevation allows unrestricted root-level access and operations across the system."
+    - match: "(^|\\\\s)del\\\\s"
+      level: 8
+      description: "File deletion command in Windows environment that permanently removes files."
+    - match: "(^|\\\\s)format\\\\s"
+      level: 10
+      description: "Disk formatting command that permanently wipes entire storage volumes."
+    - match: "(^|\\\\s)reboot"
+      level: 10
+      description: "System reboot interrupts running processes and system availability."
+    - match: "(^|\\\\s)shutdown"
+      level: 10
+      description: "System shutdown powers down or terminates the environment."
+    - match: "(^|\\\\s)python"
+      level: 8
+      description: "Arbitrary Python script execution can execute system-level operations and arbitrary code."
+    - match: "(^|\\\\s)perl"
+      level: 8
+      description: "Arbitrary Perl script execution can execute destructive system operations and unvetted code."
+    - match: "(^|\\\\s)node"
+      level: 8
+      description: "Arbitrary Node.js execution allows unchecked JavaScript execution with file system and network access."
+    - match: "(^|\\\\s)bash"
+      level: 8
+      description: "Spawning a shell environment allows arbitrary command and script execution."
+    - match: "(^|\\\\s)sh\\\\s"
+      level: 8
+      description: "Spawning a shell environment allows arbitrary command and script execution."
+    - match: "(^|\\\\s)curl"
+      level: 8
+      description: "Fetching web resources can download unvetted remote scripts or leak sensitive network data."
+    - match: "(^|\\\\s)wget"
+      level: 8
+      description: "File downloader capable of retrieving untrusted remote payloads into the local system."
+    - match: "git.*(push|reset)"
+      level: 10
+      description: "Git push or reset can overwrite remote repositories or permanently wipe uncommitted/committed history."
+    - match: "(^|\\\\s)kill(all)?\\\\s"
+      level: 10
+      description: "Process termination can kill critical running processes or services."
+    - match: "(^|\\\\s)ssh\\\\s"
+      level: 10
+      description: "Remote shell access can execute arbitrary commands on remote systems."
+    - match: "(^|\\\\s)scp\\\\s"
+      level: 10
+      description: "Remote file copy can exfiltrate or overwrite files on remote systems."
+    - match: "(^|\\\\s)rsync\\\\s"
+      level: 10
+      description: "File synchronization tool that can delete or overwrite files, especially with --delete."
+    - match: "(^|\\\\s)ruby\\\\s"
+      level: 8
+      description: "Arbitrary Ruby script execution can perform unchecked system-level operations."
+    - match: "(^|\\\\s)php\\\\s"
+      level: 8
+      description: "Arbitrary PHP script execution can perform unchecked system-level operations."
+    - match: "(^|\\\\s)docker.*(rm|rmi|prune|exec|run)"
+      level: 10
+      description: "Docker commands that can remove containers/images or execute arbitrary code inside containers."
+    - match: "(^|\\\\s)kubectl.*(delete|exec|apply)"
+      level: 10
+      description: "Kubernetes commands that can delete resources, execute arbitrary code in pods, or modify cluster state."
+    - match: "(^|\\\\s)systemctl\\\\s"
+      level: 10
+      description: "Service management command that can start, stop, or disable critical system services."
+    - match: "(^|\\\\s)truncate\\\\s"
+      level: 10
+      description: "Truncates files, potentially causing irreversible data loss."
+    - match: "(^|\\\\s)passwd\\\\s"
+      level: 10
+      description: "Changes user account passwords, affecting system access control."

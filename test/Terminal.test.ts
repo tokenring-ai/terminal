@@ -42,6 +42,14 @@ describe("TerminalService", () => {
         maxInterval: 0,
       },
     },
+    unknownCommandSafetyLevel: 6,
+    commandSafety: [
+      { match: "cd", level: 3, description: "Change directory" },
+      { match: "ls", level: 3, description: "List directory" },
+      { match: "git", level: 3, description: "Version control" },
+      { match: "(^|\\s)rm.*-.*r", level: 8, description: "Recursive delete" },
+      { match: "(^|\\s)sudo\\s", level: 10, description: "Privilege elevation" },
+    ],
   } satisfies z.input<typeof TerminalConfigSchema>;
 
   const createAttachedSession = () =>
@@ -423,19 +431,19 @@ describe("TerminalService", () => {
   });
 
   describe("Command Safety Level", () => {
-    it("should identify safe commands", () => {
-      expect(terminalService.getCommandSafetyLevel("cd")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("ls")).toBe("safe");
-      expect(terminalService.getCommandSafetyLevel("git status")).toBe("safe");
+    it("should assign low levels to safe commands", () => {
+      expect(terminalService.getCommandSafetyLevel("cd")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("ls")).toBe(3);
+      expect(terminalService.getCommandSafetyLevel("git status")).toBe(3);
     });
 
-    it("should identify dangerous commands", () => {
-      expect(terminalService.getCommandSafetyLevel("rm -rf")).toBe("dangerous");
-      expect(terminalService.getCommandSafetyLevel("sudo ls")).toBe("dangerous");
+    it("should assign high levels to dangerous commands", () => {
+      expect(terminalService.getCommandSafetyLevel("rm -rf")).toBe(8);
+      expect(terminalService.getCommandSafetyLevel("sudo ls")).toBe(10);
     });
 
-    it("should identify unknown commands", () => {
-      expect(terminalService.getCommandSafetyLevel("unknown-command")).toBe("unknown");
+    it("should assign the unknown default level to unrecognized commands", () => {
+      expect(terminalService.getCommandSafetyLevel("unknown-command")).toBe(6);
     });
   });
 
