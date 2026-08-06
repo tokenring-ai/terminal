@@ -379,7 +379,7 @@ terminal:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `agentDefaults.provider` | string | - | Terminal provider new agents use by default (e.g., posix) |
-| `agentDefaults.workingDirectory` | string | - | Default working directory (injected from --projectDirectory at launch) |
+| `agentDefaults.workingDirectory` | string | - | Default working directory (injected from --workspaceDirectory at launch) |
 | `agentDefaults.bash.cropOutput` | number | 10000 | Truncate command output beyond this length (chars) |
 | `agentDefaults.bash.timeoutSeconds` | number | 60 | Kill foreground commands running longer than this (s) |
 | `agentDefaults.bash.autoApproveUnknownCommandsAfter` | number | 30 | Auto-approve commands that are neither safe nor dangerous after this delay (0 waits forever) |

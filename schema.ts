@@ -58,7 +58,10 @@ export const TerminalConfigSchema = z
     agentDefaults: z
       .object({
         provider: z.string().meta({ description: "Terminal provider new agents use by default (e.g. posix)" } satisfies ConfigFieldMeta),
-        workingDirectory: z.string().meta({ hidden: true } satisfies ConfigFieldMeta), // injected from --projectDirectory at launch
+        workingDirectory: z
+          .string()
+          .default(".")
+          .meta({ description: "Working directory new agents use by default, either relative to workspace or absolute" } satisfies ConfigFieldMeta),
         bash: z
           .object({
             cropOutput: z

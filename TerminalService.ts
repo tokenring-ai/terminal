@@ -185,8 +185,11 @@ export default class TerminalService implements TokenRingService {
   }
 
   attach(agent: Agent, creationContext: AgentCreationContext): void {
-    const config = deepClone(this.requireOptions().agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
-    const initialState = agent.initializeState(TerminalState, config);
+    const { workingDirectory, ...config } = deepClone(this.requireOptions().agentDefaults, agent.getAgentConfigSlice("terminal", TerminalAgentConfigSchema));
+    const initialState = agent.initializeState(TerminalState, {
+      workingDirectory: agent.app.getWorkingDirectoryResolvedPath(workingDirectory),
+      ...config,
+    });
 
     const providerName = initialState.providerName;
     const terminalProvider = this.terminalProviderRegistry.get(providerName);
