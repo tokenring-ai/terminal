@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { RPCSchema } from "../../rpc/types.ts";
-import { AgentNotFoundSchema, ProviderNotFoundSchema, SuccessSchema } from "../../rpc/types.ts";
+import type { RPCSchema } from "@tokenring-ai/rpc/types";
+import { AgentNotFoundSchema, ProviderNotFoundSchema, SuccessSchema } from "@tokenring-ai/rpc/types";
 import { TerminalSessionSummarySchema } from "../schema.ts";
 
 export const TerminalNotFoundSchema = z.object({
@@ -11,6 +11,10 @@ export const TerminalNotInteractiveSchema = z.object({
   status: z.literal("terminalNotInteractive"),
 });
 export type TerminalNotInteractive = z.infer<typeof TerminalNotInteractiveSchema>;
+export const TerminalProviderNotFoundSchema = z.object({
+  status: z.literal("terminalProviderNotFound"),
+});
+export type TerminalProviderNotFound = z.infer<typeof TerminalProviderNotFoundSchema>;
 
 export default {
   name: "Terminal RPC",
@@ -26,6 +30,7 @@ export default {
           terminals: z.array(TerminalSessionSummarySchema),
         }),
         AgentNotFoundSchema,
+        TerminalProviderNotFoundSchema,
       ]),
     },
     streamTerminals: {
@@ -38,6 +43,7 @@ export default {
           terminals: z.array(TerminalSessionSummarySchema),
         }),
         AgentNotFoundSchema,
+        TerminalProviderNotFoundSchema,
       ]),
     },
     spawnTerminal: {
@@ -124,6 +130,7 @@ export default {
           complete: z.boolean(),
         }),
         TerminalNotFoundSchema,
+        TerminalNotInteractiveSchema,
       ]),
     },
     getCompleteOutput: {

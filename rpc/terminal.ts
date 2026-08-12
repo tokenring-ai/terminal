@@ -1,6 +1,6 @@
 import { AgentManager } from "@tokenring-ai/agent";
 import type TokenRingApp from "@tokenring-ai/app";
-import { createRPCEndpoint } from "../../rpc/createRPCEndpoint.ts";
+import { createRPCEndpoint } from "@tokenring-ai/rpc/createRPCEndpoint";
 import { projectTerminalList } from "../projectTerminalList.ts";
 import TerminalService from "../TerminalService.ts";
 import TerminalRpcSchema from "./schema.ts";
@@ -13,6 +13,19 @@ function requireAgent(app: TokenRingApp, agentId: string) {
   return agent;
 }
 
+/** Ensure every listed session has a registered provider; otherwise return terminalProviderNotFound. */
+function requireProvidersForSessions(terminalService: TerminalService, agentId?: string): { status: "terminalProviderNotFound" } | null {
+  for (const [, item] of terminalService.getAllTerminalSessions()) {
+    if (agentId && !item.connectedAgents.has(agentId)) {
+      continue;
+    }
+    if (!terminalService.getProviderByName(item.providerName)) {
+      return { status: "terminalProviderNotFound" as const };
+    }
+  }
+  return null;
+}
+
 export default createRPCEndpoint(TerminalRpcSchema, {
   listTerminals(args, app) {
     if (args.agentId) {
@@ -21,19 +34,30 @@ export default createRPCEndpoint(TerminalRpcSchema, {
         return { status: "agentNotFound" as const };
       }
     }
-    return { status: "success", terminals: projectTerminalList(app.requireService(TerminalService), args.agentId) };
+    const terminalService = app.requireService(TerminalService);
+    const providerError = requireProvidersForSessions(terminalService, args.agentId);
+    if (providerError) {
+      return providerError;
+    }
+    return { status: "success", terminals: projectTerminalList(terminalService, args.agentId) };
   },
 
   async *streamTerminals(args, app, signal) {
     if (args.agentId) {
       const agent = app.requireService(AgentManager).getAgent(args.agentId);
       if (!agent) {
-        return { status: "agentNotFound" as const };
+        yield { status: "agentNotFound" as const };
+        return;
       }
     }
     const terminalService = app.requireService(TerminalService);
 
     for await (const snapshot of terminalService.subscribeTerminalsAsync(signal, args.agentId)) {
+      const providerError = requireProvidersForSessions(terminalService, args.agentId);
+      if (providerError) {
+        yield providerError;
+        return;
+      }
       yield { status: "success", terminals: snapshot };
     }
   },
@@ -62,7 +86,7 @@ export default createRPCEndpoint(TerminalRpcSchema, {
       return { status: "agentNotFound" };
     }
     const session = terminalService.getTerminalSessionByName(args.terminalName);
-    if (!session) throw new Error(`Terminal '${args.terminalName}' not found`);
+    if (!session) return { status: "terminalNotFound" as const };
     terminalService.connectAgentToSession(session, agent);
     return { status: "success", success: true };
   },

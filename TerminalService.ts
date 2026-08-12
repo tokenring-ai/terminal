@@ -78,7 +78,10 @@ const isolationRanks: Record<TerminalIsolationLevel, number> = {
   container: 2,
 };
 
-export type TerminalOutputStreamChunk = { status: "terminalNotFound" } | { status: "success"; output: string; position: number; complete: boolean };
+export type TerminalOutputStreamChunk =
+  | { status: "terminalNotFound" }
+  | { status: "terminalNotInteractive" }
+  | { status: "success"; output: string; position: number; complete: boolean };
 
 export default class TerminalService implements TokenRingService {
   readonly name = "TerminalService";
@@ -91,6 +94,7 @@ export default class TerminalService implements TokenRingService {
   registerTerminalProvider = this.terminalProviderRegistry.set;
   unregisterTerminalProvider = this.terminalProviderRegistry.unregister;
   requireProviderByName = this.terminalProviderRegistry.require;
+  getProviderByName = this.terminalProviderRegistry.get;
   getAvailableProviders = this.terminalProviderRegistry.keysArray;
 
   private terminalSessionRegistry = new KeyedRegistry<TerminalSessionRecord>();
@@ -406,7 +410,8 @@ export default class TerminalService implements TokenRingService {
 
     const provider = this.requireProviderByName(session.providerName);
     if (!provider.isInteractive) {
-      throw new ConfigurationError(this.name, `Provider '${session.providerName}' does not support interactive sessions`);
+      yield { status: "terminalNotInteractive" };
+      return;
     }
 
     let position = fromPosition;

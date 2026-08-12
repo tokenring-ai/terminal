@@ -1,8 +1,8 @@
 import { AgentCommandService } from "@tokenring-ai/agent";
 import type { TokenRingPlugin } from "@tokenring-ai/app";
 import { ChatService } from "@tokenring-ai/chat";
+import { RpcService } from "@tokenring-ai/rpc";
 import { z } from "zod";
-import { RpcService } from "../rpc/index.ts";
 import commands from "./commands.ts";
 import config from "./config/index.ts";
 import packageJSON from "./package.json" with { type: "json" };

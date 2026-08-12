@@ -14,18 +14,16 @@ export function projectTerminalList(terminalService: TerminalService, agentId?: 
     let outputLength = 0;
     let exitCode: number | null = null;
 
-    try {
-      const provider = terminalService.requireProviderByName(item.providerName);
-      if (provider.isInteractive) {
-        const status = provider.getSessionStatus(item.providerSessionId);
-        if (status) {
-          running = status.running;
-          outputLength = status.outputLength;
-          exitCode = status.running ? null : (status.exitCode ?? null);
-        }
+    // Provider presence is validated by list/stream RPC methods (terminalProviderNotFound).
+    // Use optional lookup here so projection never throws on a missing provider.
+    const provider = terminalService.getProviderByName(item.providerName);
+    if (provider?.isInteractive) {
+      const status = provider.getSessionStatus(item.providerSessionId);
+      if (status) {
+        running = status.running;
+        outputLength = status.outputLength;
+        exitCode = status.running ? null : (status.exitCode ?? null);
       }
-    } catch {
-      // Provider unavailable — use defaults
     }
 
     terminals.push(

@@ -21,8 +21,8 @@ const inputSchema = {
 
 async function execute({ args, remainder, agent }: AgentCommandInputType<typeof inputSchema>): Promise<string> {
   const isolation = args.isolation;
-  if (isolation && ["none", "sandbox"].includes(isolation)) {
-    throw new CommandFailedError(`Invalid isolation level: ${isolation}. Valid options are 'none' or 'sandbox'.`);
+  if (isolation && !["none", "sandbox", "container"].includes(isolation)) {
+    throw new CommandFailedError(`Invalid isolation level: ${isolation}. Valid options are 'none', 'sandbox', or 'container'.`);
   }
 
   const terminalService = agent.requireService(TerminalService);

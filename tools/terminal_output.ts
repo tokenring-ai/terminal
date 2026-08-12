@@ -5,7 +5,7 @@ import { z } from "zod";
 import TerminalService from "../TerminalService.ts";
 
 const name = "terminal_output";
-const displayName = "Terminal/Output";
+const displayName = "Interactive Terminal/Output";
 
 export async function execute({ terminalName }: z.output<typeof inputSchema>, agent: Agent): Promise<TokenRingToolResult> {
   const terminalService = agent.requireService(TerminalService);
